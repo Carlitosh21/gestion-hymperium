@@ -7,8 +7,8 @@ WORKDIR /app
 # Copiar archivos de dependencias
 COPY package.json package-lock.json* ./
 
-# Instalar dependencias
-RUN npm ci
+# Instalar dependencias (usa npm install si no hay package-lock.json)
+RUN npm install --legacy-peer-deps
 
 # Copiar código fuente
 COPY . .
@@ -21,7 +21,7 @@ FROM node:20-alpine AS runner
 
 WORKDIR /app
 
-ENV NODE_ENV production
+ENV NODE_ENV=production
 
 # Copiar solo lo necesario desde builder
 COPY --from=builder /app/public ./public
@@ -31,7 +31,7 @@ COPY --from=builder /app/.next/static ./.next/static
 # Exponer puerto
 EXPOSE 3000
 
-ENV PORT 3000
+ENV PORT=3000
 
 # Comando para iniciar la aplicación
 CMD ["node", "server.js"]
