@@ -3,6 +3,8 @@ import { redirect } from 'next/navigation'
 import { hasAdmin, requireInternalSession } from '@/lib/auth'
 import type { ReactNode } from 'react'
 
+export const dynamic = 'force-dynamic'
+
 export default async function InternalLayout({
   children,
 }: {
