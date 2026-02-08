@@ -388,14 +388,14 @@ export default function ProspeccionPage() {
 
   return (
     <div className="p-8">
-      <div className="flex justify-between items-center mb-8">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-8">
         <div>
           <h1 className="text-4xl font-semibold mb-2">Pipeline de Leads</h1>
           <p className="text-muted text-lg">Gestión de prospección y procedimientos estandarizados</p>
         </div>
         <button
           onClick={() => setShowForm(!showForm)}
-          className="px-6 py-2.5 bg-accent text-white rounded-lg font-medium hover:bg-accent-hover transition-colors"
+          className="px-6 py-2.5 bg-accent text-white rounded-lg font-medium hover:bg-accent-hover transition-colors shadow-lg hover:shadow-xl whitespace-nowrap"
         >
           {showForm ? 'Cancelar' : '+ Nuevo Lead'}
         </button>
