@@ -20,10 +20,22 @@ export async function POST(request: Request) {
     }
 
     // Buscar usuario interno
-    const result = await query(
-      'SELECT id, email, password_hash, role FROM usuarios_internos WHERE email = $1',
-      [email]
-    )
+    let result: any
+    try {
+      result = await query(
+        'SELECT id, email, password_hash, role FROM usuarios_internos WHERE email = $1',
+        [email]
+      )
+    } catch (error: any) {
+      // Migraciones no corridas: la tabla puede no existir todavía.
+      if (error?.code === '42P01') {
+        return NextResponse.json(
+          { error: 'Base de datos sin migrar. Ejecutá POST /api/migrate y luego creá el admin en /setup.' },
+          { status: 503 }
+        )
+      }
+      throw error
+    }
 
     if (result.rows.length === 0) {
       return NextResponse.json(

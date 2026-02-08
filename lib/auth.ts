@@ -24,17 +24,25 @@ export async function createSession(
   const expiresAt = new Date()
   expiresAt.setDate(expiresAt.getDate() + SESSION_DURATION_DAYS)
 
-  await query(
-    `INSERT INTO sessions (token, kind, internal_user_id, cliente_id, expires_at)
-     VALUES ($1, $2, $3, $4, $5)`,
-    [
-      token,
-      kind,
-      kind === 'internal' ? userId : null,
-      kind === 'client' ? (clienteId || userId) : null,
-      expiresAt,
-    ]
-  )
+  try {
+    await query(
+      `INSERT INTO sessions (token, kind, internal_user_id, cliente_id, expires_at)
+       VALUES ($1, $2, $3, $4, $5)`,
+      [
+        token,
+        kind,
+        kind === 'internal' ? userId : null,
+        kind === 'client' ? (clienteId || userId) : null,
+        expiresAt,
+      ]
+    )
+  } catch (error: any) {
+    // Si aún no corrieron migraciones, la tabla sessions puede no existir.
+    if (error?.code === '42P01') {
+      throw new Error('DatabaseNotMigrated')
+    }
+    throw error
+  }
 
   return token
 }

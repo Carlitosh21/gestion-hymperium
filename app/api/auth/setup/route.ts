@@ -37,12 +37,24 @@ export async function POST(request: Request) {
     const password_hash = await bcrypt.hash(password, 10)
 
     // Crear el primer admin
-    const result = await query(
-      `INSERT INTO usuarios_internos (email, password_hash, role)
-       VALUES ($1, $2, 'admin')
-       RETURNING id, email, role`,
-      [email, password_hash]
-    )
+    let result: any
+    try {
+      result = await query(
+        `INSERT INTO usuarios_internos (email, password_hash, role)
+         VALUES ($1, $2, 'admin')
+         RETURNING id, email, role`,
+        [email, password_hash]
+      )
+    } catch (error: any) {
+      // Migraciones no corridas: la tabla puede no existir todavía.
+      if (error?.code === '42P01') {
+        return NextResponse.json(
+          { error: 'Base de datos sin migrar. Ejecutá primero POST /api/migrate.' },
+          { status: 503 }
+        )
+      }
+      throw error
+    }
 
     const user = result.rows[0]
 
