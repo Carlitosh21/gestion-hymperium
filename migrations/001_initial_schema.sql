@@ -81,9 +81,16 @@ CREATE TABLE IF NOT EXISTS llamadas (
 );
 
 -- Agregar foreign key de clientes a llamadas después de crear ambas tablas
-ALTER TABLE clientes 
-  ADD CONSTRAINT fk_clientes_llamada 
-  FOREIGN KEY (llamada_id) REFERENCES llamadas(id) ON DELETE SET NULL;
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'fk_clientes_llamada'
+  ) THEN
+    ALTER TABLE clientes 
+      ADD CONSTRAINT fk_clientes_llamada 
+      FOREIGN KEY (llamada_id) REFERENCES llamadas(id) ON DELETE SET NULL;
+  END IF;
+END $$;
 
 -- Tabla de recursos relacionados a clientes
 CREATE TABLE IF NOT EXISTS recursos_cliente (
@@ -118,16 +125,7 @@ CREATE TABLE IF NOT EXISTS resultados_cliente (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Tabla de datos de onboarding
-CREATE TABLE IF NOT EXISTS datos_onboarding (
-  id SERIAL PRIMARY KEY,
-  cliente_id INTEGER REFERENCES clientes(id) ON DELETE CASCADE,
-  pregunta_id INTEGER REFERENCES preguntas_onboarding(id) ON DELETE CASCADE,
-  respuesta TEXT,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
--- Tabla de preguntas del formulario de onboarding
+-- Tabla de preguntas del formulario de onboarding (DEBE CREARSE ANTES de datos_onboarding)
 CREATE TABLE IF NOT EXISTS preguntas_onboarding (
   id SERIAL PRIMARY KEY,
   pregunta TEXT NOT NULL,
@@ -137,6 +135,15 @@ CREATE TABLE IF NOT EXISTS preguntas_onboarding (
   activa BOOLEAN DEFAULT true,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Tabla de datos de onboarding (DESPUÉS de preguntas_onboarding)
+CREATE TABLE IF NOT EXISTS datos_onboarding (
+  id SERIAL PRIMARY KEY,
+  cliente_id INTEGER REFERENCES clientes(id) ON DELETE CASCADE,
+  pregunta_id INTEGER REFERENCES preguntas_onboarding(id) ON DELETE CASCADE,
+  respuesta TEXT,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Tabla de ingresos
