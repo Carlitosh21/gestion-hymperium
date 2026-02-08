@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 
 interface Pregunta {
@@ -12,7 +12,7 @@ interface Pregunta {
   activa: boolean
 }
 
-export default function OnboardingPage() {
+function OnboardingContent() {
   const searchParams = useSearchParams()
   const clienteId = searchParams.get('cliente')
   const modoPublico = !clienteId
@@ -368,5 +368,17 @@ export default function OnboardingPage() {
         </div>
       )}
     </div>
+  )
+}
+
+export default function OnboardingPage() {
+  return (
+    <Suspense fallback={
+      <div className="p-8">
+        <div className="text-center py-12 text-muted">Cargando...</div>
+      </div>
+    }>
+      <OnboardingContent />
+    </Suspense>
   )
 }
