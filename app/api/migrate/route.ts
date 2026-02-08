@@ -5,6 +5,7 @@ import { query } from '@/lib/db'
 import { hasAdmin, requireInternalSession } from '@/lib/auth'
 
 export const runtime = 'nodejs'
+export const dynamic = 'force-dynamic'
 
 export async function POST() {
   try {

@@ -3,6 +3,8 @@ import { query } from '@/lib/db'
 import { requireInternalSession } from '@/lib/auth'
 const bcrypt = require('bcryptjs')
 
+export const dynamic = 'force-dynamic'
+
 export async function GET() {
   try {
     await requireInternalSession()

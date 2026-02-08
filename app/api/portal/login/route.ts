@@ -5,6 +5,7 @@ import { cookies } from 'next/headers'
 const bcrypt = require('bcryptjs')
 
 export const runtime = 'nodejs'
+export const dynamic = 'force-dynamic'
 
 export async function POST(request: Request) {
   try {
