@@ -2,14 +2,15 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { Home, Briefcase, Users, BarChart3, TrendingUp, Settings } from 'lucide-react'
 
 const menuItems = [
-  { href: '/', label: 'Inicio', icon: '🏠' },
-  { href: '/ventas', label: 'Ventas', icon: '💼' },
-  { href: '/clientes', label: 'Clientes', icon: '👥' },
-  { href: '/estadisticas', label: 'Estadísticas', icon: '📊' },
-  { href: '/proyecciones', label: 'Proyecciones', icon: '📈' },
-  { href: '/gestion-interna', label: 'Gestión Interna', icon: '⚙️' },
+  { href: '/', label: 'Inicio', icon: Home },
+  { href: '/ventas', label: 'Ventas', icon: Briefcase },
+  { href: '/clientes', label: 'Clientes', icon: Users },
+  { href: '/estadisticas', label: 'Estadísticas', icon: BarChart3 },
+  { href: '/proyecciones', label: 'Proyecciones', icon: TrendingUp },
+  { href: '/gestion-interna', label: 'Gestión Interna', icon: Settings },
 ]
 
 export function Navigation() {
@@ -26,6 +27,7 @@ export function Navigation() {
         {menuItems.map((item) => {
           const isActive = pathname === item.href || 
             (item.href !== '/' && pathname?.startsWith(item.href))
+          const Icon = item.icon
           
           return (
             <Link
@@ -41,7 +43,7 @@ export function Navigation() {
                 }
               `}
             >
-              <span className="text-lg">{item.icon}</span>
+              <Icon size={20} />
               <span>{item.label}</span>
             </Link>
           )

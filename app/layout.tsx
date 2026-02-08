@@ -1,6 +1,5 @@
 import type { Metadata } from 'next'
 import './globals.css'
-import { Navigation } from '@/components/Navigation'
 
 export const metadata: Metadata = {
   title: 'Gestión Hymperium',
@@ -15,12 +14,7 @@ export default function RootLayout({
   return (
     <html lang="es">
       <body>
-        <div className="flex min-h-screen">
-          <Navigation />
-          <main className="flex-1">
-            {children}
-          </main>
-        </div>
+        {children}
       </body>
     </html>
   )

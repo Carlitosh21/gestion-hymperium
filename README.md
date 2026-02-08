@@ -46,8 +46,8 @@ N8N_VIDEOS_URL=
 ```
 
 4. Ejecutar migración de base de datos:
-   - Acceder a `/gestion-interna/config` en la aplicación
-   - Hacer clic en "Migrar Estructura"
+   - Acceder a `/api/migrate` mediante POST request o usar la interfaz en `/gestion-interna/config`
+   - Esto creará todas las tablas necesarias, incluyendo las de autenticación
 
 5. Iniciar servidor de desarrollo:
 ```bash
@@ -55,6 +55,46 @@ npm run dev
 ```
 
 La aplicación estará disponible en `http://localhost:3000`
+
+## Autenticación y Primer Acceso
+
+### Setup Inicial (Primer Administrador)
+
+Al acceder por primera vez, serás redirigido automáticamente a `/setup` para crear el primer usuario administrador:
+
+1. Ingresa tu email y contraseña
+2. Confirma la contraseña
+3. Una vez creado, serás redirigido al panel interno
+
+**Nota**: El endpoint `/setup` solo está disponible si no existe ningún administrador en el sistema.
+
+### Login de Usuarios Internos
+
+Después del setup inicial, los usuarios internos (admin/staff) pueden iniciar sesión en `/login`:
+
+- Accede a `/login`
+- Ingresa tu email y contraseña
+- Serás redirigido al panel interno (`/`)
+
+### Portal de Clientes
+
+Los clientes tienen acceso a su propio portal:
+
+1. **Login de Clientes**: `/portal/login`
+   - Los clientes usan el email y contraseña asignados al crear su cuenta
+   - Solo pueden ver sus propios datos (recursos, tareas, resultados)
+
+2. **Panel del Cliente**: `/portal`
+   - Muestra el estado de entrega del proyecto
+   - Permite ver recursos, tareas y resultados asignados
+   - Acceso restringido solo a los datos del cliente autenticado
+
+### Protección de Rutas
+
+- **Rutas Internas**: Todas las rutas del panel interno (`/`, `/ventas`, `/clientes`, etc.) requieren autenticación de usuario interno
+- **Rutas del Portal**: `/portal` requiere autenticación de cliente
+- **Rutas Públicas**: `/estadisticas/onboarding` y sus APIs relacionadas son públicas
+- **Redirección Automática**: Si intentas acceder a una ruta protegida sin autenticación, serás redirigido automáticamente al login correspondiente
 
 ## Desplegar en Easy Panel
 
@@ -120,8 +160,14 @@ N8N_VIDEOS_URL=https://tu-n8n.com/webhook/videos
 ### Paso 9: Ejecutar Migración Inicial
 
 1. Accede a tu aplicación desplegada
-2. Ve a `/gestion-interna/config`
-3. Haz clic en "Migrar Estructura" para crear todas las tablas necesarias
+2. Ejecuta la migración mediante POST a `/api/migrate` o usa la interfaz en `/gestion-interna/config`
+3. Esto creará todas las tablas necesarias, incluyendo las de autenticación
+
+### Paso 10: Crear Primer Administrador
+
+1. Al acceder a la aplicación, serás redirigido automáticamente a `/setup`
+2. Crea el primer usuario administrador
+3. Una vez creado, podrás acceder al panel interno
 
 ## Notas Importantes
 
@@ -133,15 +179,27 @@ N8N_VIDEOS_URL=https://tu-n8n.com/webhook/videos
 
 ```
 /app                    # Rutas y páginas (Next.js App Router)
+  /(internal)           # Panel interno (requiere auth interno)
+    /ventas             # Módulo de ventas
+    /clientes           # Módulo de clientes
+    /estadisticas       # Módulo de estadísticas
+    /proyecciones       # Creador de proyecciones
+    /gestion-interna    # Gestión interna (finanzas, config)
+  /(auth)               # Autenticación (sin sidebar)
+    /login              # Login usuarios internos
+    /setup              # Setup primer admin
+  /(portal)             # Portal de clientes
+    /portal             # Dashboard cliente
+    /portal/login       # Login clientes
   /api                  # API routes
-  /ventas               # Módulo de ventas
-  /clientes             # Módulo de clientes
-  /estadisticas         # Módulo de estadísticas
-  /proyecciones         # Creador de proyecciones
-  /gestion-interna      # Gestión interna (finanzas, config)
+    /auth               # Endpoints de autenticación interna
+    /portal             # Endpoints del portal de clientes
 /components             # Componentes React reutilizables
-/lib                    # Utilidades y servicios (DB, n8n)
+/lib                    # Utilidades y servicios (DB, auth, n8n)
 /migrations             # Scripts SQL de migración
+  /001_initial_schema.sql  # Schema inicial
+  /002_auth.sql         # Schema de autenticación
+/middleware.ts          # Protección de rutas
 /styles                 # Estilos globales
 ```
 

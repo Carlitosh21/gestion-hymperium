@@ -5,9 +5,12 @@ import { query } from '@/lib/db'
 
 export async function POST() {
   try {
-    // Leer el archivo de migración
-    const migrationPath = join(process.cwd(), 'migrations', '001_initial_schema.sql')
-    const migrationSQL = readFileSync(migrationPath, 'utf-8')
+    // Ejecutar migraciones en orden
+    const migrations = ['001_initial_schema.sql', '002_auth.sql']
+    
+    for (const migrationFile of migrations) {
+      const migrationPath = join(process.cwd(), 'migrations', migrationFile)
+      const migrationSQL = readFileSync(migrationPath, 'utf-8')
     
     // Ejecutar usando el cliente pg directamente para mejor control
     const db = query as any
@@ -64,30 +67,31 @@ export async function POST() {
       statements.push(current.trim())
     }
     
-    // Ejecutar cada statement
-    for (const statement of statements) {
-      if (statement.trim()) {
-        try {
-          await query(statement)
-        } catch (error: any) {
-          // Ignorar errores de "ya existe"
-          if (error.message && (
-            error.message.includes('already exists') ||
-            error.message.includes('duplicate') ||
-            error.message.includes('constraint') && error.message.includes('already exists')
-          )) {
-            console.log(`Saltando (ya existe): ${error.message.substring(0, 80)}`)
-            continue
+      // Ejecutar cada statement
+      for (const statement of statements) {
+        if (statement.trim()) {
+          try {
+            await query(statement)
+          } catch (error: any) {
+            // Ignorar errores de "ya existe"
+            if (error.message && (
+              error.message.includes('already exists') ||
+              error.message.includes('duplicate') ||
+              error.message.includes('constraint') && error.message.includes('already exists')
+            )) {
+              console.log(`Saltando (ya existe): ${error.message.substring(0, 80)}`)
+              continue
+            }
+            // Re-lanzar otros errores
+            throw error
           }
-          // Re-lanzar otros errores
-          throw error
         }
       }
     }
     
     return NextResponse.json({ 
       success: true, 
-      message: 'Migración ejecutada correctamente' 
+      message: 'Migraciones ejecutadas correctamente' 
     })
   } catch (error: any) {
     console.error('Error en migración:', error)
