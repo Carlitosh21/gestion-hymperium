@@ -45,6 +45,16 @@ export function getPool(): Pool {
 }
 
 export async function query(text: string, params?: any[]) {
-  const db = getPool()
-  return db.query(text, params)
+  try {
+    const db = getPool()
+    return await db.query(text, params)
+  } catch (error: any) {
+    // Log detallado para debugging
+    console.error('Error en query DB:', {
+      message: error.message,
+      code: error.code,
+      query: text.substring(0, 100),
+    })
+    throw error
+  }
 }

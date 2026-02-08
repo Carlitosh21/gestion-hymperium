@@ -9,8 +9,15 @@ export const dynamic = 'force-dynamic'
 
 export async function POST() {
   try {
-    // Verificar si existe admin
-    const adminExists = await hasAdmin()
+    // Verificar si existe admin (con manejo de errores de conexión)
+    let adminExists = false
+    try {
+      adminExists = await hasAdmin()
+    } catch (error: any) {
+      // Si hay error de conexión a la DB, permitir migraciones (setup inicial)
+      console.error('Error al verificar admin (probablemente DB no conectada):', error.message)
+      // Continuar con migraciones para permitir setup inicial
+    }
     
     // Si ya hay admin, requiere autenticación interna
     if (adminExists) {
