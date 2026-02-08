@@ -1,8 +1,10 @@
 import { NextResponse } from 'next/server'
 import { query } from '@/lib/db'
+import { requireInternalSession } from '@/lib/auth'
 
 export async function GET(request: Request) {
   try {
+    await requireInternalSession()
     const { searchParams } = new URL(request.url)
     const tipo = searchParams.get('tipo')
     const plataforma = searchParams.get('plataforma')
@@ -40,6 +42,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    await requireInternalSession()
     const body = await request.json()
     const {
       plataforma,

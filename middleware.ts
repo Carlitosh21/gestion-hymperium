@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
-import { getSession, hasAdmin } from '@/lib/auth'
 
 export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname
@@ -20,27 +19,6 @@ export async function middleware(request: NextRequest) {
     '/api/estadisticas/onboarding/submit',
   ]
 
-  // Permitir /api/migrate solo si no hay admin (setup inicial)
-  if (pathname === '/api/migrate') {
-    const adminExists = await hasAdmin()
-    if (adminExists) {
-      // Si ya hay admin, requiere autenticación
-      if (!token) {
-        return NextResponse.redirect(new URL('/login', request.url))
-      }
-      try {
-        const session = await getSession(token)
-        if (!session || session.kind !== 'internal' || !session.internal_user_id) {
-          return NextResponse.redirect(new URL('/login', request.url))
-        }
-      } catch (error) {
-        return NextResponse.redirect(new URL('/login', request.url))
-      }
-    }
-    // Si no hay admin, permitir acceso para setup inicial
-    return NextResponse.next()
-  }
-
   // Si es una ruta pública, permitir acceso
   if (publicRoutes.some(route => pathname === route || pathname.startsWith(route + '/'))) {
     return NextResponse.next()
@@ -54,47 +32,30 @@ export async function middleware(request: NextRequest) {
   // Leer cookie directamente del request
   const token = request.cookies.get('gh_session')?.value
 
-  // Rutas del portal (requieren sesión de cliente)
-  if (pathname.startsWith('/portal')) {
+  // Rutas del portal (requieren cookie de sesión - validación real en API handlers)
+  if (pathname.startsWith('/portal') && pathname !== '/portal/login') {
     if (!token) {
       return NextResponse.redirect(new URL('/portal/login', request.url))
     }
-    try {
-      const session = await getSession(token)
-      if (!session || session.kind !== 'client' || !session.cliente_id) {
-        return NextResponse.redirect(new URL('/portal/login', request.url))
-      }
-      return NextResponse.next()
-    } catch (error) {
-      return NextResponse.redirect(new URL('/portal/login', request.url))
-    }
+    return NextResponse.next()
   }
 
-  // Rutas internas (requieren sesión interna)
+  // Rutas internas (requieren cookie de sesión - validación real en layouts y API handlers)
   if (pathname.startsWith('/api/') || pathname === '/' || 
       pathname.startsWith('/ventas') || pathname.startsWith('/clientes') ||
       pathname.startsWith('/estadisticas') || pathname.startsWith('/proyecciones') ||
       pathname.startsWith('/gestion-interna')) {
     
-    // Verificar si existe admin
-    const adminExists = await hasAdmin()
-    if (!adminExists) {
-      return NextResponse.redirect(new URL('/setup', request.url))
+    // Excluir /api/migrate - se protege en su propio handler
+    if (pathname === '/api/migrate') {
+      return NextResponse.next()
     }
 
     if (!token) {
       return NextResponse.redirect(new URL('/login', request.url))
     }
 
-    try {
-      const session = await getSession(token)
-      if (!session || session.kind !== 'internal' || !session.internal_user_id) {
-        return NextResponse.redirect(new URL('/login', request.url))
-      }
-      return NextResponse.next()
-    } catch (error) {
-      return NextResponse.redirect(new URL('/login', request.url))
-    }
+    return NextResponse.next()
   }
 
   return NextResponse.next()

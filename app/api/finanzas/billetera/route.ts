@@ -1,8 +1,10 @@
 import { NextResponse } from 'next/server'
 import { query } from '@/lib/db'
+import { requireInternalSession } from '@/lib/auth'
 
 export async function GET() {
   try {
+    await requireInternalSession()
     // Calcular total de ingresos
     const ingresosResult = await query(
       'SELECT COALESCE(SUM(monto), 0) as total FROM ingresos'

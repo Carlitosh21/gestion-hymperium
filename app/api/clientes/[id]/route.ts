@@ -1,11 +1,13 @@
 import { NextResponse } from 'next/server'
 import { query } from '@/lib/db'
+import { requireInternalSession } from '@/lib/auth'
 
 export async function GET(
   request: Request,
   { params }: { params: { id: string } }
 ) {
   try {
+    await requireInternalSession()
     const result = await query(
       'SELECT * FROM clientes WHERE id = $1',
       [params.id]
@@ -33,6 +35,7 @@ export async function PATCH(
   { params }: { params: { id: string } }
 ) {
   try {
+    await requireInternalSession()
     const body = await request.json()
     const { estado_entrega, cotizacion, entregables } = body
 

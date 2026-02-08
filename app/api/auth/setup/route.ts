@@ -4,6 +4,8 @@ import { hasAdmin, createSession } from '@/lib/auth'
 import { cookies } from 'next/headers'
 const bcrypt = require('bcryptjs')
 
+export const runtime = 'nodejs'
+
 export async function GET() {
   const adminExists = await hasAdmin()
   return NextResponse.json({ adminExists })

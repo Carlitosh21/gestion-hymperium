@@ -1,11 +1,13 @@
 import { NextResponse } from 'next/server'
 import { query } from '@/lib/db'
+import { requireInternalSession } from '@/lib/auth'
 
 export async function PATCH(
   request: Request,
   { params }: { params: { id: string } }
 ) {
   try {
+    await requireInternalSession()
     const body = await request.json()
     const { idea_contenido_id } = body
 

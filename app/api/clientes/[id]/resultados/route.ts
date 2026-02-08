@@ -1,11 +1,13 @@
 import { NextResponse } from 'next/server'
 import { query } from '@/lib/db'
+import { requireInternalSession } from '@/lib/auth'
 
 export async function GET(
   request: Request,
   { params }: { params: { id: string } }
 ) {
   try {
+    await requireInternalSession()
     const result = await query(
       'SELECT * FROM resultados_cliente WHERE cliente_id = $1 ORDER BY created_at DESC',
       [params.id]
@@ -25,6 +27,7 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
+    await requireInternalSession()
     const body = await request.json()
     const { titulo, descripcion } = body
 

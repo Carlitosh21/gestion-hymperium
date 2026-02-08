@@ -1,11 +1,13 @@
 import { NextResponse } from 'next/server'
 import { query } from '@/lib/db'
+import { requireInternalSession } from '@/lib/auth'
 
 export async function PATCH(
   request: Request,
   { params }: { params: { id: string; tareaId: string } }
 ) {
   try {
+    await requireInternalSession()
     const body = await request.json()
     const { estado } = body
 
@@ -39,6 +41,7 @@ export async function DELETE(
   { params }: { params: { id: string; tareaId: string } }
 ) {
   try {
+    await requireInternalSession()
     const result = await query(
       'DELETE FROM tareas WHERE id = $1 AND cliente_id = $2 RETURNING *',
       [params.tareaId, params.id]

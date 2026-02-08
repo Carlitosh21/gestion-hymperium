@@ -1,8 +1,10 @@
 import { NextResponse } from 'next/server'
 import { query } from '@/lib/db'
+import { requireInternalSession } from '@/lib/auth'
 
 export async function GET() {
   try {
+    await requireInternalSession()
     const result = await query(`
       SELECT 
         l.*,
@@ -25,6 +27,7 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
+    await requireInternalSession()
     const body = await request.json()
     const { lead_id, cliente_id, fecha, duracion, link_grabacion, notas, resultado } = body
 

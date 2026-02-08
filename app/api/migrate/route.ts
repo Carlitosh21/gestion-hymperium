@@ -2,9 +2,27 @@ import { NextResponse } from 'next/server'
 import { readFileSync } from 'fs'
 import { join } from 'path'
 import { query } from '@/lib/db'
+import { hasAdmin, requireInternalSession } from '@/lib/auth'
+
+export const runtime = 'nodejs'
 
 export async function POST() {
   try {
+    // Verificar si existe admin
+    const adminExists = await hasAdmin()
+    
+    // Si ya hay admin, requiere autenticación interna
+    if (adminExists) {
+      try {
+        await requireInternalSession()
+      } catch (error) {
+        return NextResponse.json(
+          { error: 'No autorizado' },
+          { status: 401 }
+        )
+      }
+    }
+    // Si no hay admin, permitir ejecutar migraciones (setup inicial)
     // Ejecutar migraciones en orden
     const migrations = ['001_initial_schema.sql', '002_auth.sql']
     

@@ -4,6 +4,8 @@ import { createSession } from '@/lib/auth'
 import { cookies } from 'next/headers'
 const bcrypt = require('bcryptjs')
 
+export const runtime = 'nodejs'
+
 export async function POST(request: Request) {
   try {
     const body = await request.json()

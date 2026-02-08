@@ -1,14 +1,22 @@
 import { NextResponse } from 'next/server'
 import { query } from '@/lib/db'
+import { requireInternalSession } from '@/lib/auth'
 const bcrypt = require('bcryptjs')
 
 export async function GET() {
   try {
+    await requireInternalSession()
     const result = await query(
       'SELECT id, nombre, email, telefono, estado_entrega, created_at FROM clientes ORDER BY created_at DESC'
     )
     return NextResponse.json(result.rows)
   } catch (error: any) {
+    if (error.message === 'Unauthorized') {
+      return NextResponse.json(
+        { error: 'No autorizado' },
+        { status: 401 }
+      )
+    }
     console.error('Error al obtener clientes:', error)
     return NextResponse.json(
       { error: error.message },
@@ -19,6 +27,7 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
+    await requireInternalSession()
     const body = await request.json()
     const { nombre, email, password, telefono, llamada_id } = body
 
@@ -53,6 +62,12 @@ export async function POST(request: Request) {
 
     return NextResponse.json(result.rows[0])
   } catch (error: any) {
+    if (error.message === 'Unauthorized') {
+      return NextResponse.json(
+        { error: 'No autorizado' },
+        { status: 401 }
+      )
+    }
     console.error('Error al crear cliente:', error)
     if (error.code === '23505') {
       // Violación de unique constraint (email)

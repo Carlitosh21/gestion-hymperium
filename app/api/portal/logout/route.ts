@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server'
 import { getCurrentSession, deleteSession } from '@/lib/auth'
 import { cookies } from 'next/headers'
 
+export const runtime = 'nodejs'
+
 export async function POST() {
   try {
     const session = await getCurrentSession()
