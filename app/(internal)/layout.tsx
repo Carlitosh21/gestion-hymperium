@@ -10,18 +10,24 @@ export default async function InternalLayout({
 }: {
   children: ReactNode
 }) {
-  // Verificar si existe admin
-  const adminExists = await hasAdmin()
-  
-  if (!adminExists) {
-    redirect('/setup')
-  }
-
-  // Verificar sesión interna
   try {
-    await requireInternalSession()
+    // Verificar si existe admin
+    const adminExists = await hasAdmin()
+    
+    if (!adminExists) {
+      redirect('/setup')
+    }
+
+    // Verificar sesión interna
+    try {
+      await requireInternalSession()
+    } catch (error) {
+      redirect('/login')
+    }
   } catch (error) {
-    redirect('/login')
+    // Si hay error (ej: tabla no existe), redirigir a setup para que corra migraciones
+    console.error('Error en layout interno:', error)
+    redirect('/setup')
   }
 
   return (

@@ -8,8 +8,14 @@ export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
 export async function GET() {
-  const adminExists = await hasAdmin()
-  return NextResponse.json({ adminExists })
+  try {
+    const adminExists = await hasAdmin()
+    return NextResponse.json({ adminExists })
+  } catch (error: any) {
+    // Si hay error (ej: tabla no existe), tratar como "no hay admin"
+    console.error('Error al verificar admin:', error)
+    return NextResponse.json({ adminExists: false })
+  }
 }
 
 export async function POST(request: Request) {
