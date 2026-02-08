@@ -9,25 +9,72 @@ export async function POST() {
     const migrationPath = join(process.cwd(), 'migrations', '001_initial_schema.sql')
     const migrationSQL = readFileSync(migrationPath, 'utf-8')
     
-    // Ejecutar la migración completa
-    // Dividir por punto y coma y ejecutar cada statement
-    const statements = migrationSQL
-      .split(';')
-      .map(s => s.trim())
-      .filter(s => s.length > 0 && !s.startsWith('--'))
+    // Ejecutar usando el cliente pg directamente para mejor control
+    const db = query as any
+    
+    // Dividir el SQL en statements, manejando bloques DO $$ correctamente
+    const statements: string[] = []
+    let current = ''
+    let inDoBlock = false
+    let dollarTag = ''
+    let depth = 0
+    
+    const lines = migrationSQL.split('\n')
+    
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i]
+      const trimmed = line.trim()
+      
+      // Detectar inicio de DO $$
+      if (trimmed.match(/^\s*DO\s+\$\$/) || trimmed.match(/^\s*DO\s+\$[a-zA-Z_]/)) {
+        inDoBlock = true
+        const match = trimmed.match(/DO\s+(\$\$|\$[a-zA-Z_][a-zA-Z0-9_]*\$)/)
+        if (match) {
+          dollarTag = match[1]
+        }
+        current += line + '\n'
+        continue
+      }
+      
+      // Si estamos en un bloque DO, acumular hasta encontrar el cierre
+      if (inDoBlock) {
+        current += line + '\n'
+        // Buscar el cierre del bloque (END seguido del dollar tag y punto y coma)
+        if (trimmed.includes('END') && trimmed.includes(dollarTag + ';')) {
+          statements.push(current.trim())
+          current = ''
+          inDoBlock = false
+          dollarTag = ''
+        }
+        continue
+      }
+      
+      // Statement normal
+      if (trimmed && !trimmed.startsWith('--')) {
+        current += line + '\n'
+        if (trimmed.endsWith(';')) {
+          statements.push(current.trim())
+          current = ''
+        }
+      }
+    }
+    
+    // Agregar el último statement si existe
+    if (current.trim() && !current.trim().startsWith('--')) {
+      statements.push(current.trim())
+    }
     
     // Ejecutar cada statement
     for (const statement of statements) {
       if (statement.trim()) {
         try {
-          await query(statement + ';')
+          await query(statement)
         } catch (error: any) {
-          // Ignorar errores de "ya existe" o "duplicate"
+          // Ignorar errores de "ya existe"
           if (error.message && (
             error.message.includes('already exists') ||
             error.message.includes('duplicate') ||
-            error.message.includes('constraint') && error.message.includes('already exists') ||
-            error.message.includes('IF NOT EXISTS')
+            error.message.includes('constraint') && error.message.includes('already exists')
           )) {
             console.log(`Saltando (ya existe): ${error.message.substring(0, 80)}`)
             continue

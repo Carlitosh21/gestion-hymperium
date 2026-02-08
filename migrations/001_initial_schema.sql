@@ -81,10 +81,17 @@ CREATE TABLE IF NOT EXISTS llamadas (
 );
 
 -- Agregar foreign key de clientes a llamadas después de crear ambas tablas
--- Usar IF NOT EXISTS con ALTER TABLE directamente (PostgreSQL 9.5+)
-ALTER TABLE clientes 
-  ADD CONSTRAINT IF NOT EXISTS fk_clientes_llamada 
-  FOREIGN KEY (llamada_id) REFERENCES llamadas(id) ON DELETE SET NULL;
+-- Solo agregar si no existe (verificar primero)
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'fk_clientes_llamada'
+  ) THEN
+    ALTER TABLE clientes 
+      ADD CONSTRAINT fk_clientes_llamada 
+      FOREIGN KEY (llamada_id) REFERENCES llamadas(id) ON DELETE SET NULL;
+  END IF;
+END $$;
 
 -- Tabla de recursos relacionados a clientes
 CREATE TABLE IF NOT EXISTS recursos_cliente (
