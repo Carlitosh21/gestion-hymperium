@@ -619,8 +619,8 @@ export default function ProspeccionPage() {
           onDragStart={handleDragStart}
           onDragEnd={handleDragEnd}
         >
-          <div className="w-full overflow-x-auto pb-4">
-            <div className="flex gap-4 min-w-max">
+          <div className="w-full overflow-x-auto overflow-y-visible pb-4" style={{ scrollbarWidth: 'thin' }}>
+            <div className="flex gap-4" style={{ width: 'max-content' }}>
               {ESTADOS_PIPELINE.map((estado) => (
                 <Column
                   key={estado.id}
