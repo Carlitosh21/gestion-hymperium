@@ -39,15 +39,115 @@ const ESTADOS_PIPELINE = [
   { id: 'respuesta_positiva', label: 'Respuesta Positiva', color: 'bg-green-500' },
   { id: 'respuesta_negativa', label: 'Respuesta Negativa', color: 'bg-red-500' },
   { id: 'llamada_agendada', label: 'Llamada Agendada', color: 'bg-indigo-500' },
+  { id: 'llamada_reagendada', label: 'Llamada Reagendada', color: 'bg-indigo-400' },
+  { id: 'llamada_cancelada', label: 'Llamada Cancelada', color: 'bg-orange-500' },
+  { id: 'no_se_presento', label: 'No se Presentó', color: 'bg-red-400' },
   { id: 'no_cualifica', label: 'No Cualifica', color: 'bg-gray-500' },
+  { id: 'seña', label: 'Seña', color: 'bg-emerald-500' },
+  { id: 'downsell', label: 'Downsell', color: 'bg-teal-500' },
+  { id: 'cerrado', label: 'Cerrado', color: 'bg-green-600' },
 ]
 
 const ESTADOS_CONVERSION = ['seña', 'downsell', 'cerrado']
+const ESTADOS_REQUIEREN_LLAMADA = ['llamada_agendada', 'llamada_reagendada']
 
 interface ConversionModalProps {
   lead: Lead | null
   onClose: () => void
   onConvert: (data: { nombre: string; email: string; password: string; telefono?: string }) => Promise<void>
+}
+
+interface LlamadaModalProps {
+  lead: Lead | null
+  prevEstado: string
+  newEstado: string
+  onClose: () => void
+  onConfirm: (fecha: string) => Promise<void>
+}
+
+function LlamadaModal({ lead, prevEstado, newEstado, onClose, onConfirm }: LlamadaModalProps) {
+  const [fecha, setFecha] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    // Establecer fecha por defecto: ahora + 1 hora
+    const now = new Date()
+    now.setHours(now.getHours() + 1)
+    setFecha(now.toISOString().slice(0, 16))
+  }, [])
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!fecha) {
+      setError('La fecha y hora son requeridas')
+      return
+    }
+
+    setError(null)
+    setSubmitting(true)
+
+    try {
+      await onConfirm(fecha)
+      onClose()
+    } catch (err: any) {
+      setError(err.message || 'Error al crear llamada')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  if (!lead) return null
+
+  const estadoLabel = ESTADOS_PIPELINE.find(e => e.id === newEstado)?.label || newEstado
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-surface rounded-xl p-6 border border-border max-w-md w-full mx-4">
+        <h2 className="text-xl font-semibold mb-4">Agendar Llamada</h2>
+        <p className="text-sm text-muted mb-4">
+          Moviste el lead <strong>@{lead.usuario_ig || lead.nombre}</strong> a <strong>{estadoLabel}</strong>.
+          Completá la fecha y hora de la llamada:
+        </p>
+
+        {error && (
+          <div className="mb-4 p-3 bg-red-50 text-red-800 rounded-lg border border-red-200 text-sm">
+            {error}
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium mb-2">Fecha y Hora *</label>
+            <input
+              type="datetime-local"
+              required
+              value={fecha}
+              onChange={(e) => setFecha(e.target.value)}
+              className="w-full px-4 py-2 border border-border rounded-lg bg-background"
+            />
+          </div>
+
+          <div className="flex gap-3">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 px-4 py-2 border border-border rounded-lg hover:bg-surface-elevated transition-colors"
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              disabled={submitting}
+              className="flex-1 px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent-hover disabled:opacity-50 transition-colors"
+            >
+              {submitting ? 'Creando...' : 'Crear Llamada'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
 }
 
 function ConversionModal({ lead, onClose, onConvert }: ConversionModalProps) {
@@ -227,7 +327,7 @@ function Column({ estado, leads }: { estado: { id: string; label: string; color:
   const { setNodeRef, isOver } = useDroppable({ id: estado.id })
 
   return (
-    <div className="flex-1 min-w-[280px]">
+    <div className="w-[280px] flex-shrink-0">
       <div ref={setNodeRef} className={`bg-surface rounded-xl p-4 border border-border h-full flex flex-col ${isOver ? 'ring-2 ring-accent bg-surface-elevated' : ''}`}>
         <div className="flex items-center gap-2 mb-4">
           <div className={`w-3 h-3 rounded-full ${estado.color}`} />
@@ -260,6 +360,11 @@ export default function ProspeccionPage() {
   const [notas, setNotas] = useState('')
   const [activeId, setActiveId] = useState<string | null>(null)
   const [conversionLead, setConversionLead] = useState<Lead | null>(null)
+  const [llamadaModal, setLlamadaModal] = useState<{
+    lead: Lead
+    prevEstado: string
+    newEstado: string
+  } | null>(null)
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -326,6 +431,14 @@ export default function ProspeccionPage() {
     const lead = leads.find(l => l.id.toString() === leadId)
     if (!lead || lead.estado === newEstado) return
 
+    const prevEstado = lead.estado
+
+    // Si requiere llamada, abrir modal primero (sin actualizar estado todavía)
+    if (ESTADOS_REQUIEREN_LLAMADA.includes(newEstado)) {
+      setLlamadaModal({ lead, prevEstado, newEstado })
+      return
+    }
+
     // Actualización optimista
     const updatedLeads = leads.map(l =>
       l.id.toString() === leadId
@@ -359,6 +472,67 @@ export default function ProspeccionPage() {
       console.error('Error al actualizar lead:', error)
       // Revertir en caso de error
       fetchLeads()
+    }
+  }
+
+  const handleLlamadaCancel = () => {
+    // Cerrar modal sin hacer cambios
+    setLlamadaModal(null)
+  }
+
+  const handleLlamadaConfirm = async (fecha: string) => {
+    if (!llamadaModal) return
+
+    const { lead, prevEstado, newEstado } = llamadaModal
+
+    // Actualización optimista
+    const updatedLeads = leads.map(l =>
+      l.id === lead.id
+        ? { ...l, estado: newEstado, estado_editado_at: new Date().toISOString() }
+        : l
+    )
+    setLeads(updatedLeads)
+
+    try {
+      // 1. Actualizar estado del lead
+      const patchResponse = await fetch(`/api/ventas/leads/${lead.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ estado: newEstado }),
+      })
+
+      if (!patchResponse.ok) {
+        throw new Error('Error al actualizar estado del lead')
+      }
+
+      // 2. Crear registro en llamadas
+      const llamadaResponse = await fetch('/api/ventas/llamadas', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          lead_id: lead.id,
+          fecha: fecha,
+        }),
+      })
+
+      if (!llamadaResponse.ok) {
+        // Rollback: revertir estado del lead
+        await fetch(`/api/ventas/leads/${lead.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ estado: prevEstado }),
+        })
+        throw new Error('Error al crear llamada')
+      }
+
+      // Todo bien, cerrar modal y refrescar
+      setLlamadaModal(null)
+      fetchLeads()
+    } catch (error: any) {
+      console.error('Error al crear llamada:', error)
+      // Revertir UI
+      fetchLeads()
+      throw error
     }
   }
 
@@ -445,14 +619,16 @@ export default function ProspeccionPage() {
           onDragStart={handleDragStart}
           onDragEnd={handleDragEnd}
         >
-          <div className="flex gap-4 overflow-x-auto pb-4">
-            {ESTADOS_PIPELINE.map((estado) => (
-              <Column
-                key={estado.id}
-                estado={estado}
-                leads={leadsByEstado[estado.id] || []}
-              />
-            ))}
+          <div className="w-full overflow-x-auto pb-4">
+            <div className="flex gap-4 min-w-max">
+              {ESTADOS_PIPELINE.map((estado) => (
+                <Column
+                  key={estado.id}
+                  estado={estado}
+                  leads={leadsByEstado[estado.id] || []}
+                />
+              ))}
+            </div>
           </div>
           <DragOverlay>
             {activeId ? (
@@ -469,6 +645,16 @@ export default function ProspeccionPage() {
           lead={conversionLead}
           onClose={() => setConversionLead(null)}
           onConvert={handleConvert}
+        />
+      )}
+
+      {llamadaModal && (
+        <LlamadaModal
+          lead={llamadaModal.lead}
+          prevEstado={llamadaModal.prevEstado}
+          newEstado={llamadaModal.newEstado}
+          onClose={handleLlamadaCancel}
+          onConfirm={handleLlamadaConfirm}
         />
       )}
     </div>
