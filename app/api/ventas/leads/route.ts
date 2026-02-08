@@ -7,8 +7,11 @@ export const dynamic = 'force-dynamic'
 export async function GET() {
   try {
     await requireInternalSession()
+    // Solo devolver leads no convertidos (cliente_id IS NULL)
     const result = await query(
-      'SELECT * FROM leads ORDER BY created_at DESC'
+      `SELECT * FROM leads 
+       WHERE cliente_id IS NULL 
+       ORDER BY estado_editado_at DESC NULLS LAST, created_at DESC`
     )
     return NextResponse.json(result.rows)
   } catch (error: any) {
@@ -24,13 +27,23 @@ export async function POST(request: Request) {
   try {
     await requireInternalSession()
     const body = await request.json()
-    const { nombre, email, telefono, origen, metodo_prospeccion, notas } = body
+    const { usuario_ig, notas } = body
+
+    if (!usuario_ig) {
+      return NextResponse.json(
+        { error: 'Usuario IG es requerido' },
+        { status: 400 }
+      )
+    }
+
+    // Usar usuario_ig como nombre por defecto si no hay nombre separado
+    const nombre = usuario_ig
 
     const result = await query(
-      `INSERT INTO leads (nombre, email, telefono, origen, metodo_prospeccion, notas, estado)
-       VALUES ($1, $2, $3, $4, $5, $6, 'nuevo')
+      `INSERT INTO leads (nombre, usuario_ig, origen, metodo_prospeccion, notas, estado, estado_editado_at)
+       VALUES ($1, $2, 'prospeccion', 'Instagram', $3, 'mensaje_conexion', CURRENT_TIMESTAMP)
        RETURNING *`,
-      [nombre, email || null, telefono || null, origen, metodo_prospeccion || null, notas || null]
+      [nombre, usuario_ig, notas || null]
     )
 
     return NextResponse.json(result.rows[0])

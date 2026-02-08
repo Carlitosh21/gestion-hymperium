@@ -1,31 +1,272 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import Link from 'next/link'
+import {
+  DndContext,
+  DragOverlay,
+  closestCorners,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+  DragStartEvent,
+  useDroppable,
+} from '@dnd-kit/core'
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+  useSortable,
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
+import { GripVertical } from 'lucide-react'
 
 interface Lead {
   id: number
   nombre: string
-  email: string | null
-  telefono: string | null
-  origen: string
-  metodo_prospeccion: string | null
+  usuario_ig: string | null
   estado: string
+  estado_editado_at: string | null
   notas: string | null
   created_at: string
+}
+
+const ESTADOS_PIPELINE = [
+  { id: 'mensaje_conexion', label: 'Mensaje Conexión', color: 'bg-yellow-500' },
+  { id: 'respondio', label: 'Respondió', color: 'bg-blue-500' },
+  { id: 'video_enviado', label: 'Video Enviado', color: 'bg-purple-500' },
+  { id: 'respuesta_positiva', label: 'Respuesta Positiva', color: 'bg-green-500' },
+  { id: 'respuesta_negativa', label: 'Respuesta Negativa', color: 'bg-red-500' },
+  { id: 'llamada_agendada', label: 'Llamada Agendada', color: 'bg-indigo-500' },
+  { id: 'no_cualifica', label: 'No Cualifica', color: 'bg-gray-500' },
+]
+
+const ESTADOS_CONVERSION = ['seña', 'downsell', 'cerrado']
+
+interface ConversionModalProps {
+  lead: Lead | null
+  onClose: () => void
+  onConvert: (data: { nombre: string; email: string; password: string; telefono?: string }) => Promise<void>
+}
+
+function ConversionModal({ lead, onClose, onConvert }: ConversionModalProps) {
+  const [formData, setFormData] = useState({
+    nombre: '',
+    email: '',
+    password: '',
+    telefono: '',
+  })
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (lead) {
+      setFormData({
+        nombre: lead.nombre || '',
+        email: '',
+        password: '',
+        telefono: '',
+      })
+    }
+  }, [lead])
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setError(null)
+    setSubmitting(true)
+
+    try {
+      await onConvert(formData)
+      onClose()
+    } catch (err: any) {
+      setError(err.message || 'Error al convertir lead')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  if (!lead) return null
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-surface rounded-xl p-6 border border-border max-w-md w-full mx-4">
+        <h2 className="text-xl font-semibold mb-4">Convertir Lead a Cliente</h2>
+        <p className="text-sm text-muted mb-4">
+          Para convertir este lead a cliente, completá los siguientes datos:
+        </p>
+
+        {error && (
+          <div className="mb-4 p-3 bg-red-50 text-red-800 rounded-lg border border-red-200 text-sm">
+            {error}
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium mb-2">Nombre Completo *</label>
+            <input
+              type="text"
+              required
+              value={formData.nombre}
+              onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
+              className="w-full px-4 py-2 border border-border rounded-lg bg-background"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-2">Email (Gmail) *</label>
+            <input
+              type="email"
+              required
+              value={formData.email}
+              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+              className="w-full px-4 py-2 border border-border rounded-lg bg-background"
+              placeholder="cliente@gmail.com"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-2">Contraseña *</label>
+            <input
+              type="password"
+              required
+              value={formData.password}
+              onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+              className="w-full px-4 py-2 border border-border rounded-lg bg-background"
+              placeholder="Para acceso al panel del cliente"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-2">Teléfono (opcional)</label>
+            <input
+              type="tel"
+              value={formData.telefono}
+              onChange={(e) => setFormData({ ...formData, telefono: e.target.value })}
+              className="w-full px-4 py-2 border border-border rounded-lg bg-background"
+            />
+          </div>
+
+          <div className="flex gap-3">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 px-4 py-2 border border-border rounded-lg hover:bg-surface-elevated transition-colors"
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              disabled={submitting}
+              className="flex-1 px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent-hover disabled:opacity-50 transition-colors"
+            >
+              {submitting ? 'Convirtiendo...' : 'Convertir'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
+
+function LeadCard({ lead }: { lead: Lead }) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: lead.id.toString() })
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  }
+
+  const formatFecha = (fecha: string | null) => {
+    if (!fecha) return 'N/A'
+    const date = new Date(fecha)
+    return date.toLocaleDateString('es-ES', {
+      day: 'numeric',
+      month: 'short',
+      hour: '2-digit',
+      minute: '2-digit',
+    })
+  }
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="p-3 bg-surface-elevated rounded-lg border border-border hover:bg-surface transition-colors cursor-grab active:cursor-grabbing"
+    >
+      <div className="flex items-start gap-2">
+        <div {...attributes} {...listeners} className="mt-1 cursor-grab active:cursor-grabbing">
+          <GripVertical className="w-4 h-4 text-muted" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="font-medium truncate">
+            {lead.usuario_ig ? `@${lead.usuario_ig}` : lead.nombre}
+          </div>
+          {lead.usuario_ig && lead.nombre !== lead.usuario_ig && (
+            <div className="text-sm text-muted truncate">{lead.nombre}</div>
+          )}
+          <div className="text-xs text-muted mt-1">
+            Última edición: {formatFecha(lead.estado_editado_at)}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function Column({ estado, leads }: { estado: { id: string; label: string; color: string }; leads: Lead[] }) {
+  const { setNodeRef, isOver } = useDroppable({ id: estado.id })
+
+  return (
+    <div className="flex-1 min-w-[280px]">
+      <div ref={setNodeRef} className={`bg-surface rounded-xl p-4 border border-border h-full flex flex-col ${isOver ? 'ring-2 ring-accent bg-surface-elevated' : ''}`}>
+        <div className="flex items-center gap-2 mb-4">
+          <div className={`w-3 h-3 rounded-full ${estado.color}`} />
+          <h3 className="text-lg font-semibold">{estado.label}</h3>
+          <span className="ml-auto text-sm text-muted bg-surface-elevated px-2 py-1 rounded">
+            {leads.length}
+          </span>
+        </div>
+        <SortableContext items={leads.map(l => l.id.toString())} strategy={verticalListSortingStrategy}>
+          <div className="space-y-2 flex-1 overflow-y-auto min-h-[200px]">
+            {leads.length === 0 ? (
+              <p className="text-sm text-muted text-center py-4">Sin leads</p>
+            ) : (
+              leads.map((lead) => (
+                <LeadCard key={lead.id} lead={lead} />
+              ))
+            )}
+          </div>
+        </SortableContext>
+      </div>
+    </div>
+  )
 }
 
 export default function ProspeccionPage() {
   const [leads, setLeads] = useState<Lead[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
-  const [formData, setFormData] = useState({
-    nombre: '',
-    email: '',
-    telefono: '',
-    metodo_prospeccion: '',
-    notas: '',
-  })
+  const [usuarioIg, setUsuarioIg] = useState('')
+  const [notas, setNotas] = useState('')
+  const [activeId, setActiveId] = useState<string | null>(null)
+  const [conversionLead, setConversionLead] = useState<Lead | null>(null)
+
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  )
 
   useEffect(() => {
     fetchLeads()
@@ -45,25 +286,22 @@ export default function ProspeccionPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!usuarioIg.trim()) return
+
     try {
       const response = await fetch('/api/ventas/leads', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          ...formData,
-          origen: 'prospeccion',
+          usuario_ig: usuarioIg.trim(),
+          notas: notas.trim() || null,
         }),
       })
 
       if (response.ok) {
         setShowForm(false)
-        setFormData({
-          nombre: '',
-          email: '',
-          telefono: '',
-          metodo_prospeccion: '',
-          notas: '',
-        })
+        setUsuarioIg('')
+        setNotas('')
         fetchLeads()
       }
     } catch (error) {
@@ -71,7 +309,82 @@ export default function ProspeccionPage() {
     }
   }
 
-  const estados = ['nuevo', 'contactado', 'calificado', 'propuesta', 'ganado', 'perdido']
+  const handleDragStart = (event: DragStartEvent) => {
+    setActiveId(event.active.id as string)
+  }
+
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event
+    setActiveId(null)
+
+    if (!over) return
+
+    const leadId = active.id as string
+    const newEstado = over.id as string
+
+    // Encontrar el lead actual
+    const lead = leads.find(l => l.id.toString() === leadId)
+    if (!lead || lead.estado === newEstado) return
+
+    // Actualización optimista
+    const updatedLeads = leads.map(l =>
+      l.id.toString() === leadId
+        ? { ...l, estado: newEstado, estado_editado_at: new Date().toISOString() }
+        : l
+    )
+    setLeads(updatedLeads)
+
+    try {
+      const response = await fetch(`/api/ventas/leads/${leadId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ estado: newEstado }),
+      })
+
+      const result = await response.json()
+
+      if (response.ok) {
+        // Si requiere conversión, abrir modal
+        if (result.requiresConversion && ESTADOS_CONVERSION.includes(newEstado)) {
+          setConversionLead(result)
+        } else {
+          // Refrescar para obtener datos actualizados
+          fetchLeads()
+        }
+      } else {
+        // Revertir en caso de error
+        fetchLeads()
+      }
+    } catch (error) {
+      console.error('Error al actualizar lead:', error)
+      // Revertir en caso de error
+      fetchLeads()
+    }
+  }
+
+  const handleConvert = async (data: { nombre: string; email: string; password: string; telefono?: string }) => {
+    if (!conversionLead) return
+
+    const response = await fetch(`/api/ventas/leads/${conversionLead.id}/convert`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    })
+
+    if (!response.ok) {
+      const error = await response.json()
+      throw new Error(error.error || 'Error al convertir lead')
+    }
+
+    // Remover el lead del pipeline y refrescar
+    setConversionLead(null)
+    fetchLeads()
+  }
+
+  const leadsByEstado = ESTADOS_PIPELINE.reduce((acc, estado) => {
+    acc[estado.id] = leads.filter(l => l.estado === estado.id)
+    return acc
+  }, {} as Record<string, Lead[]>)
 
   return (
     <div className="p-8">
@@ -92,53 +405,25 @@ export default function ProspeccionPage() {
         <div className="mb-8 bg-surface rounded-xl p-6 border border-border">
           <h2 className="text-xl font-semibold mb-4">Nuevo Lead</h2>
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium mb-2">Nombre *</label>
-                <input
-                  type="text"
-                  required
-                  value={formData.nombre}
-                  onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
-                  className="w-full px-4 py-2 border border-border rounded-lg bg-background"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-2">Email</label>
-                <input
-                  type="email"
-                  value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  className="w-full px-4 py-2 border border-border rounded-lg bg-background"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-2">Teléfono</label>
-                <input
-                  type="tel"
-                  value={formData.telefono}
-                  onChange={(e) => setFormData({ ...formData, telefono: e.target.value })}
-                  className="w-full px-4 py-2 border border-border rounded-lg bg-background"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-2">Método de Prospección</label>
-                <input
-                  type="text"
-                  value={formData.metodo_prospeccion}
-                  onChange={(e) => setFormData({ ...formData, metodo_prospeccion: e.target.value })}
-                  className="w-full px-4 py-2 border border-border rounded-lg bg-background"
-                  placeholder="Ej: LinkedIn, Cold Email, etc."
-                />
-              </div>
+            <div>
+              <label className="block text-sm font-medium mb-2">Usuario IG *</label>
+              <input
+                type="text"
+                required
+                value={usuarioIg}
+                onChange={(e) => setUsuarioIg(e.target.value.replace('@', ''))}
+                className="w-full px-4 py-2 border border-border rounded-lg bg-background"
+                placeholder="ej: carlosvercellone"
+              />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-2">Notas</label>
+              <label className="block text-sm font-medium mb-2">Notas (opcional)</label>
               <textarea
-                value={formData.notas}
-                onChange={(e) => setFormData({ ...formData, notas: e.target.value })}
-                rows={3}
+                value={notas}
+                onChange={(e) => setNotas(e.target.value)}
+                rows={2}
                 className="w-full px-4 py-2 border border-border rounded-lg bg-background"
+                placeholder="Notas adicionales sobre el lead..."
               />
             </div>
             <button
@@ -154,39 +439,37 @@ export default function ProspeccionPage() {
       {loading ? (
         <div className="text-center py-12 text-muted">Cargando...</div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {estados.map((estado) => {
-            const leadsEstado = leads.filter((l) => l.estado === estado)
-            return (
-              <div key={estado} className="bg-surface rounded-xl p-6 border border-border">
-                <h3 className="text-lg font-semibold mb-4 capitalize">{estado}</h3>
-                <div className="space-y-3">
-                  {leadsEstado.length === 0 ? (
-                    <p className="text-sm text-muted">Sin leads</p>
-                  ) : (
-                    leadsEstado.map((lead) => (
-                      <Link
-                        key={lead.id}
-                        href={`/ventas/leads/${lead.id}`}
-                        className="block p-3 bg-surface-elevated rounded-lg hover:bg-surface transition-colors"
-                      >
-                        <div className="font-medium">{lead.nombre}</div>
-                        {lead.email && (
-                          <div className="text-sm text-muted mt-1">{lead.email}</div>
-                        )}
-                        {lead.metodo_prospeccion && (
-                          <div className="text-xs text-muted mt-1">
-                            {lead.metodo_prospeccion}
-                          </div>
-                        )}
-                      </Link>
-                    ))
-                  )}
-                </div>
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCorners}
+          onDragStart={handleDragStart}
+          onDragEnd={handleDragEnd}
+        >
+          <div className="flex gap-4 overflow-x-auto pb-4">
+            {ESTADOS_PIPELINE.map((estado) => (
+              <Column
+                key={estado.id}
+                estado={estado}
+                leads={leadsByEstado[estado.id] || []}
+              />
+            ))}
+          </div>
+          <DragOverlay>
+            {activeId ? (
+              <div className="p-3 bg-surface-elevated rounded-lg border border-border shadow-lg">
+                {leads.find(l => l.id.toString() === activeId)?.usuario_ig || 'Lead'}
               </div>
-            )
-          })}
-        </div>
+            ) : null}
+          </DragOverlay>
+        </DndContext>
+      )}
+
+      {conversionLead && (
+        <ConversionModal
+          lead={conversionLead}
+          onClose={() => setConversionLead(null)}
+          onConvert={handleConvert}
+        />
       )}
     </div>
   )
