@@ -4,11 +4,16 @@ let pool: Pool | null = null
 
 export function getPool(): Pool {
   if (!pool) {
+    // Asegurarse de que la contraseña siempre sea un string
+    const password = process.env.PGPASSWORD
+      ? String(process.env.PGPASSWORD)
+      : ''
+
     pool = new Pool({
       host: process.env.PGHOST || 'localhost',
       port: parseInt(process.env.PGPORT || '5432'),
       user: process.env.PGUSER || 'postgres',
-      password: process.env.PGPASSWORD || '',
+      password: password,
       database: process.env.PGDATABASE || 'hymperium',
       // Importante para Easy Panel: min: 0 evita problemas de conexión cuando el contenedor está inactivo
       min: 0,
