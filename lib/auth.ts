@@ -40,11 +40,20 @@ export async function createSession(
 }
 
 export async function getSession(token: string): Promise<Session | null> {
-  const result = await query(
-    `SELECT * FROM sessions 
-     WHERE token = $1 AND expires_at > NOW()`,
-    [token]
-  )
+  let result: any
+  try {
+    result = await query(
+      `SELECT * FROM sessions 
+       WHERE token = $1 AND expires_at > NOW()`,
+      [token]
+    )
+  } catch (error: any) {
+    // Si aún no corrieron migraciones, la tabla sessions puede no existir.
+    if (error?.code === '42P01') {
+      return null
+    }
+    throw error
+  }
 
   if (result.rows.length === 0) {
     return null
@@ -54,7 +63,15 @@ export async function getSession(token: string): Promise<Session | null> {
 }
 
 export async function deleteSession(token: string): Promise<void> {
-  await query('DELETE FROM sessions WHERE token = $1', [token])
+  try {
+    await query('DELETE FROM sessions WHERE token = $1', [token])
+  } catch (error: any) {
+    // Si no existe la tabla todavía, no hay nada que borrar.
+    if (error?.code === '42P01') {
+      return
+    }
+    throw error
+  }
 }
 
 export async function getCurrentSession(): Promise<Session | null> {
@@ -89,6 +106,15 @@ export async function requireClientSession(): Promise<Session> {
 }
 
 export async function hasAdmin(): Promise<boolean> {
-  const result = await query('SELECT COUNT(*) as count FROM usuarios_internos')
-  return parseInt(result.rows[0].count) > 0
+  try {
+    const result = await query('SELECT COUNT(*) as count FROM usuarios_internos')
+    return parseInt(result.rows[0].count) > 0
+  } catch (error: any) {
+    // Si aún no corrieron migraciones, la tabla puede no existir.
+    // En ese caso tratamos como "no hay admin" para permitir /api/migrate y /setup.
+    if (error?.code === '42P01') {
+      return false
+    }
+    throw error
+  }
 }
