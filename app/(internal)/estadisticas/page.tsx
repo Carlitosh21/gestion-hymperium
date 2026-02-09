@@ -31,8 +31,8 @@ export default function EstadisticasPage() {
       description: 'Ingresos, egresos y billetera',
       icon: DollarSign,
       color: 'bg-emerald-500',
-      href: '#',
-      available: false,
+      href: '/estadisticas/finanzas',
+      available: true,
     },
     {
       id: 'contenido',
