@@ -131,6 +131,7 @@ export default function ContenidoPage() {
   const [loading, setLoading] = useState(true)
   const [loadingN8n, setLoadingN8n] = useState(false)
   const [showIdeaModal, setShowIdeaModal] = useState(false)
+  const [activeTab, setActiveTab] = useState<string>('pendiente')
 
   useEffect(() => {
     fetchIdeas()
@@ -229,29 +230,133 @@ export default function ContenidoPage() {
   const ideasShortForm = ideas.filter((i) => i.estado === 'short_form')
   const ideasProgramadas = ideas.filter((i) => i.estado === 'programado')
 
-  const renderIdeaCard = (idea: IdeaContenido, acciones: React.ReactNode) => {
+  const tabs = [
+    { id: 'pendiente', label: 'Pendientes', count: ideasPendientes.length },
+    { id: 'aceptada', label: 'Aceptadas', count: ideasAceptadas.length },
+    { id: 'long_form', label: 'Long Form', count: ideasLongForm.length },
+    { id: 'short_form', label: 'Short Form', count: ideasShortForm.length },
+    { id: 'programado', label: 'Programado', count: ideasProgramadas.length },
+  ]
+
+  const getIdeasForTab = (tabId: string) => {
+    switch (tabId) {
+      case 'pendiente': return ideasPendientes
+      case 'aceptada': return ideasAceptadas
+      case 'long_form': return ideasLongForm
+      case 'short_form': return ideasShortForm
+      case 'programado': return ideasProgramadas
+      default: return []
+    }
+  }
+
+  const getAccionesForEstado = (idea: IdeaContenido) => {
+    switch (idea.estado) {
+      case 'pendiente':
+        return (
+          <div className="flex gap-2 mt-4">
+            <button
+              onClick={() => handleCambiarEstado(idea.id, 'aceptada')}
+              className="flex-1 px-4 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 transition-colors font-medium"
+            >
+              Aceptar
+            </button>
+            <button
+              onClick={() => handleRechazar(idea.id)}
+              className="flex-1 px-4 py-2 bg-red-600 text-white text-sm rounded-lg hover:bg-red-700 transition-colors font-medium"
+            >
+              Rechazar
+            </button>
+          </div>
+        )
+      case 'aceptada':
+        return (
+          <div className="flex flex-col gap-2 mt-4">
+            <button
+              onClick={() => handleCambiarEstado(idea.id, 'long_form')}
+              className="w-full px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors font-medium"
+            >
+              Long Form Listo
+            </button>
+            <button
+              onClick={() => handleCambiarEstado(idea.id, 'short_form')}
+              className="w-full px-4 py-2 bg-purple-600 text-white text-sm rounded-lg hover:bg-purple-700 transition-colors font-medium"
+            >
+              Short Form Listo
+            </button>
+            <button
+              onClick={() => handleCambiarEstado(idea.id, 'programado')}
+              className="w-full px-4 py-2 bg-indigo-600 text-white text-sm rounded-lg hover:bg-indigo-700 transition-colors font-medium"
+            >
+              Programar
+            </button>
+          </div>
+        )
+      case 'long_form':
+        return (
+          <div className="flex flex-col gap-2 mt-4">
+            <button
+              onClick={() => handleCambiarEstado(idea.id, 'short_form')}
+              className="w-full px-4 py-2 bg-purple-600 text-white text-sm rounded-lg hover:bg-purple-700 transition-colors font-medium"
+            >
+              Short Form Listo
+            </button>
+            <button
+              onClick={() => handleCambiarEstado(idea.id, 'programado')}
+              className="w-full px-4 py-2 bg-indigo-600 text-white text-sm rounded-lg hover:bg-indigo-700 transition-colors font-medium"
+            >
+              Programar
+            </button>
+          </div>
+        )
+      case 'short_form':
+        return (
+          <div className="mt-4">
+            <button
+              onClick={() => handleCambiarEstado(idea.id, 'programado')}
+              className="w-full px-4 py-2 bg-indigo-600 text-white text-sm rounded-lg hover:bg-indigo-700 transition-colors font-medium"
+            >
+              Programar
+            </button>
+          </div>
+        )
+      case 'programado':
+        return (
+          <div className="mt-4">
+            <div className="px-4 py-2 bg-indigo-100 text-indigo-800 text-sm rounded-lg text-center font-medium">
+              Programado
+            </div>
+          </div>
+        )
+      default:
+        return null
+    }
+  }
+
+  const renderIdeaCard = (idea: IdeaContenido) => {
     const descripcion = idea.descripcion_estrategica || idea.descripcion
     return (
       <div
         key={idea.id}
-        className="p-4 bg-surface-elevated rounded-lg border border-border"
+        className="p-6 bg-surface rounded-xl border border-border hover:border-accent/50 transition-all flex flex-col h-full"
       >
-        <h3 className="font-medium mb-2">{idea.titulo}</h3>
+        <h3 className="text-lg font-semibold mb-3 leading-tight">{idea.titulo}</h3>
         {descripcion && (
-          <p className="text-sm text-muted mb-3 line-clamp-3">{descripcion}</p>
+          <div className="flex-1 mb-4">
+            <p className="text-sm text-muted leading-relaxed whitespace-pre-wrap">{descripcion}</p>
+          </div>
         )}
         {idea.guion_longform_url && (
           <a
             href={idea.guion_longform_url}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-1 text-xs text-accent hover:underline mb-3"
+            className="flex items-center gap-2 text-sm text-accent hover:underline mb-4 font-medium"
           >
-            <ExternalLink className="w-3 h-3" />
+            <ExternalLink className="w-4 h-4" />
             Guion Long Form
           </a>
         )}
-        {acciones}
+        {getAccionesForEstado(idea)}
       </div>
     )
   }
@@ -281,141 +386,61 @@ export default function ContenidoPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 mb-8">
-        {/* Pendientes */}
-        <div className="bg-surface rounded-xl p-6 border border-border">
-          <h2 className="text-xl font-semibold mb-4">Pendientes</h2>
-          {loading ? (
-            <div className="text-muted text-sm">Cargando...</div>
-          ) : ideasPendientes.length === 0 ? (
-            <p className="text-sm text-muted">No hay ideas pendientes</p>
-          ) : (
-            <div className="space-y-3">
-              {ideasPendientes.map((idea) =>
-                renderIdeaCard(
-                  idea,
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => handleCambiarEstado(idea.id, 'aceptada')}
-                      className="flex-1 px-3 py-1.5 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 transition-colors"
-                    >
-                      Aceptar
-                    </button>
-                    <button
-                      onClick={() => handleRechazar(idea.id)}
-                      className="flex-1 px-3 py-1.5 bg-red-600 text-white text-sm rounded-lg hover:bg-red-700 transition-colors"
-                    >
-                      Rechazar
-                    </button>
-                  </div>
-                )
+      {/* Tabs */}
+      <div className="mb-6 border-b border-border">
+        <div className="flex overflow-x-auto">
+          {tabs.map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`
+                px-6 py-4 text-sm font-medium border-b-2 transition-colors whitespace-nowrap
+                flex items-center gap-2
+                ${
+                  activeTab === tab.id
+                    ? 'border-accent text-accent'
+                    : 'border-transparent text-muted hover:text-foreground hover:border-border'
+                }
+              `}
+            >
+              <span>{tab.label}</span>
+              {tab.count > 0 && (
+                <span
+                  className={`
+                    px-2 py-0.5 text-xs rounded-full
+                    ${
+                      activeTab === tab.id
+                        ? 'bg-accent/20 text-accent'
+                        : 'bg-surface-elevated text-muted'
+                    }
+                  `}
+                >
+                  {tab.count}
+                </span>
               )}
-            </div>
-          )}
-        </div>
-
-        {/* Aceptadas */}
-        <div className="bg-surface rounded-xl p-6 border border-border">
-          <h2 className="text-xl font-semibold mb-4">Aceptadas</h2>
-          {ideasAceptadas.length === 0 ? (
-            <p className="text-sm text-muted">No hay ideas aceptadas</p>
-          ) : (
-            <div className="space-y-3">
-              {ideasAceptadas.map((idea) =>
-                renderIdeaCard(
-                  idea,
-                  <div className="flex flex-col gap-2">
-                    <button
-                      onClick={() => handleCambiarEstado(idea.id, 'long_form')}
-                      className="w-full px-3 py-1.5 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors"
-                    >
-                      Long Form Listo
-                    </button>
-                    <button
-                      onClick={() => handleCambiarEstado(idea.id, 'short_form')}
-                      className="w-full px-3 py-1.5 bg-purple-600 text-white text-sm rounded-lg hover:bg-purple-700 transition-colors"
-                    >
-                      Short Form Listo
-                    </button>
-                    <button
-                      onClick={() => handleCambiarEstado(idea.id, 'programado')}
-                      className="w-full px-3 py-1.5 bg-indigo-600 text-white text-sm rounded-lg hover:bg-indigo-700 transition-colors"
-                    >
-                      Programar
-                    </button>
-                  </div>
-                )
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* Long Form */}
-        <div className="bg-surface rounded-xl p-6 border border-border">
-          <h2 className="text-xl font-semibold mb-4">Long Form</h2>
-          {ideasLongForm.length === 0 ? (
-            <p className="text-sm text-muted">No hay ideas en Long Form</p>
-          ) : (
-            <div className="space-y-3">
-              {ideasLongForm.map((idea) =>
-                renderIdeaCard(
-                  idea,
-                  <div className="flex flex-col gap-2">
-                    <button
-                      onClick={() => handleCambiarEstado(idea.id, 'short_form')}
-                      className="w-full px-3 py-1.5 bg-purple-600 text-white text-sm rounded-lg hover:bg-purple-700 transition-colors"
-                    >
-                      Short Form Listo
-                    </button>
-                    <button
-                      onClick={() => handleCambiarEstado(idea.id, 'programado')}
-                      className="w-full px-3 py-1.5 bg-indigo-600 text-white text-sm rounded-lg hover:bg-indigo-700 transition-colors"
-                    >
-                      Programar
-                    </button>
-                  </div>
-                )
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* Short Form */}
-        <div className="bg-surface rounded-xl p-6 border border-border">
-          <h2 className="text-xl font-semibold mb-4">Short Form</h2>
-          {ideasShortForm.length === 0 ? (
-            <p className="text-sm text-muted">No hay ideas en Short Form</p>
-          ) : (
-            <div className="space-y-3">
-              {ideasShortForm.map((idea) =>
-                renderIdeaCard(
-                  idea,
-                  <button
-                    onClick={() => handleCambiarEstado(idea.id, 'programado')}
-                    className="w-full px-3 py-1.5 bg-indigo-600 text-white text-sm rounded-lg hover:bg-indigo-700 transition-colors"
-                  >
-                    Programar
-                  </button>
-                )
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* Programado */}
-        <div className="bg-surface rounded-xl p-6 border border-border">
-          <h2 className="text-xl font-semibold mb-4">Programado</h2>
-          {ideasProgramadas.length === 0 ? (
-            <p className="text-sm text-muted">No hay ideas programadas</p>
-          ) : (
-            <div className="space-y-3">
-              {ideasProgramadas.map((idea) =>
-                renderIdeaCard(idea, <div className="text-xs text-muted">Programado</div>)
-              )}
-            </div>
-          )}
+            </button>
+          ))}
         </div>
       </div>
+
+      {/* Grid de Ideas */}
+      {loading ? (
+        <div className="text-center py-12 text-muted">Cargando...</div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {getIdeasForTab(activeTab).length === 0 ? (
+            <div className="col-span-full">
+              <div className="bg-surface rounded-xl p-12 border border-border text-center">
+                <p className="text-muted text-lg">
+                  No hay ideas {tabs.find(t => t.id === activeTab)?.label.toLowerCase()}
+                </p>
+              </div>
+            </div>
+          ) : (
+            getIdeasForTab(activeTab).map((idea) => renderIdeaCard(idea))
+          )}
+        </div>
+      )}
 
       {/* Sección de Videos */}
       <div className="mt-8">
