@@ -17,6 +17,23 @@ export async function POST(request: Request) {
       )
     }
 
+    // Validar formato de fecha
+    let fechaSnapshot: Date
+    try {
+      fechaSnapshot = new Date(estado_editado_at_snapshot)
+      if (isNaN(fechaSnapshot.getTime())) {
+        return NextResponse.json(
+          { error: 'Formato de fecha inválido' },
+          { status: 400 }
+        )
+      }
+    } catch (error) {
+      return NextResponse.json(
+        { error: 'Formato de fecha inválido' },
+        { status: 400 }
+      )
+    }
+
     // Obtener el estado actual del lead para validar
     const leadResult = await query(
       `SELECT estado, estado_editado_at FROM leads WHERE id = $1`,
@@ -47,12 +64,14 @@ export async function POST(request: Request) {
           seguimiento_id,
           lead_id,
           lead.estado,
-          estado_editado_at_snapshot
+          fechaSnapshot.toISOString()
         ]
       )
 
+      console.log(`Seguimiento ${seguimiento_id} marcado como enviado para lead ${lead_id}`)
       return NextResponse.json({ success: true, envio: result.rows[0] })
     } catch (error: any) {
+      console.error('Error al insertar seguimiento_envio:', error)
       // Si es error de duplicado, está bien (ya fue marcado)
       if (error.code === '23505') {
         return NextResponse.json({ success: true, message: 'Ya estaba marcado como enviado' })

@@ -9,15 +9,33 @@ export async function PATCH(
 ) {
   try {
     const body = await request.json()
-    const { pregunta, tipo, opciones, orden, activa } = body
+    const { titulo, descripcion, pregunta, tipo, opciones, orden, activa } = body
 
     const updates: string[] = []
     const values: any[] = []
     let paramIndex = 1
 
+    if (titulo !== undefined) {
+      updates.push(`titulo = $${paramIndex++}`)
+      values.push(titulo)
+      // Si se actualiza titulo y no viene pregunta, actualizar pregunta también para compatibilidad
+      if (pregunta === undefined) {
+        updates.push(`pregunta = $${paramIndex - 1}`)
+      }
+    }
+
+    if (descripcion !== undefined) {
+      updates.push(`descripcion = $${paramIndex++}`)
+      values.push(descripcion)
+    }
+
     if (pregunta !== undefined) {
       updates.push(`pregunta = $${paramIndex++}`)
       values.push(pregunta)
+      // Si se actualiza pregunta y no viene titulo, actualizar titulo también
+      if (titulo === undefined) {
+        updates.push(`titulo = $${paramIndex - 1}`)
+      }
     }
 
     if (tipo !== undefined) {

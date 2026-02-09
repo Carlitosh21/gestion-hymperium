@@ -5,8 +5,22 @@ const bcrypt = require('bcryptjs')
 
 export const dynamic = 'force-dynamic'
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    // Permitir validación pública de número de identificación sin autenticación
+    const { searchParams } = new URL(request.url)
+    const numeroIdentificacion = searchParams.get('numero_identificacion')
+    
+    if (numeroIdentificacion) {
+      // Validación pública (sin requireInternalSession)
+      const result = await query(
+        'SELECT id, numero_identificacion FROM clientes WHERE numero_identificacion = $1',
+        [numeroIdentificacion]
+      )
+      return NextResponse.json(result.rows)
+    }
+
+    // Listado completo requiere autenticación
     await requireInternalSession()
     const result = await query(
       'SELECT id, nombre, email, telefono, estado_entrega, created_at FROM clientes ORDER BY created_at DESC'

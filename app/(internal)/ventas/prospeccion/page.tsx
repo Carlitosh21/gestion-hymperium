@@ -973,17 +973,32 @@ export default function ProspeccionPage() {
   }
 
   const handleMarkSent = async (seguimientoId: number, leadId: number, estadoEditadoAt: string) => {
-    const response = await fetch('/api/ventas/seguimientos/mark-sent', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        seguimiento_id: seguimientoId,
-        lead_id: leadId,
-        estado_editado_at_snapshot: estadoEditadoAt,
-      }),
-    })
-    if (response.ok) {
-      await fetchSeguimientosDue()
+    try {
+      // Asegurar que estadoEditadoAt sea un string ISO válido
+      const fechaSnapshot = estadoEditadoAt ? new Date(estadoEditadoAt).toISOString() : new Date().toISOString()
+      
+      const response = await fetch('/api/ventas/seguimientos/mark-sent', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          seguimiento_id: seguimientoId,
+          lead_id: leadId,
+          estado_editado_at_snapshot: fechaSnapshot,
+        }),
+      })
+      
+      if (response.ok) {
+        const data = await response.json()
+        await fetchSeguimientosDue()
+        // Mostrar mensaje de éxito
+        alert('Seguimiento marcado como enviado')
+      } else {
+        const error = await response.json()
+        alert(`Error: ${error.error || 'No se pudo marcar como enviado'}`)
+      }
+    } catch (error: any) {
+      console.error('Error al marcar seguimiento como enviado:', error)
+      alert(`Error: ${error.message || 'No se pudo marcar como enviado'}`)
     }
   }
 

@@ -21,14 +21,25 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const body = await request.json()
-    const { pregunta, tipo, opciones, orden } = body
+    const { titulo, descripcion, pregunta, tipo, opciones, orden } = body
+
+    // Usar titulo si existe, sino pregunta (compatibilidad hacia atrás)
+    const tituloFinal = titulo || pregunta
+    if (!tituloFinal) {
+      return NextResponse.json(
+        { error: 'Título o pregunta es requerido' },
+        { status: 400 }
+      )
+    }
 
     const result = await query(
-      `INSERT INTO preguntas_onboarding (pregunta, tipo, opciones, orden, activa)
-       VALUES ($1, $2, $3, $4, true)
+      `INSERT INTO preguntas_onboarding (titulo, descripcion, pregunta, tipo, opciones, orden, activa)
+       VALUES ($1, $2, $3, $4, $5, $6, true)
        RETURNING *`,
       [
-        pregunta,
+        tituloFinal,
+        descripcion || null,
+        pregunta || tituloFinal, // Mantener pregunta para compatibilidad
         tipo || 'texto',
         opciones ? JSON.stringify(opciones) : null,
         orden || 0,

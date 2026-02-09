@@ -5,6 +5,8 @@ import { useSearchParams } from 'next/navigation'
 
 interface Pregunta {
   id: number
+  titulo: string | null
+  descripcion: string | null
   pregunta: string
   tipo: string
   opciones: any
@@ -29,6 +31,9 @@ function OnboardingContent() {
   const [respuestas, setRespuestas] = useState<Record<number, string>>({})
   const [numeroIdentificacion, setNumeroIdentificacion] = useState('')
   const [showPublicForm, setShowPublicForm] = useState(modoPublico)
+  const [validatingId, setValidatingId] = useState(false)
+  const [idValid, setIdValid] = useState(false)
+  const [idError, setIdError] = useState<string | null>(null)
 
   useEffect(() => {
     fetchPreguntas()
@@ -98,11 +103,52 @@ function OnboardingContent() {
     }
   }
 
+  const handleValidateId = async () => {
+    if (!numeroIdentificacion.trim()) {
+      setIdError('Debes ingresar tu número de identificación')
+      return
+    }
+
+    setValidatingId(true)
+    setIdError(null)
+
+    try {
+      // Validar que el ID existe en la base de datos
+      const response = await fetch(`/api/clientes?numero_identificacion=${encodeURIComponent(numeroIdentificacion.trim())}`)
+      
+      if (response.ok) {
+        const clientes = await response.json()
+        if (Array.isArray(clientes) && clientes.length > 0) {
+          setIdValid(true)
+          setShowPublicForm(true)
+          setIdError(null)
+        } else {
+          setIdValid(false)
+          setIdError('Número de identificación no válido. Por favor, verifica e intenta nuevamente.')
+        }
+      } else {
+        setIdValid(false)
+        setIdError('Error al validar el número de identificación. Por favor, intenta nuevamente.')
+      }
+    } catch (error) {
+      console.error('Error al validar ID:', error)
+      setIdValid(false)
+      setIdError('Error al validar el número de identificación. Por favor, intenta nuevamente.')
+    } finally {
+      setValidatingId(false)
+    }
+  }
+
   const handleSubmitFormulario = async (e: React.FormEvent) => {
     e.preventDefault()
 
     if (!numeroIdentificacion && modoPublico) {
       alert('Debes ingresar tu número de identificación')
+      return
+    }
+
+    if (!idValid && modoPublico) {
+      alert('Debes validar tu número de identificación primero')
       return
     }
 
@@ -125,6 +171,8 @@ function OnboardingContent() {
         alert('Formulario enviado correctamente')
         setRespuestas({})
         setNumeroIdentificacion('')
+        setIdValid(false)
+        setShowPublicForm(false)
       } else {
         const error = await response.json()
         alert(error.error || 'Error al enviar formulario')
@@ -138,25 +186,43 @@ function OnboardingContent() {
   if (modoPublico && !showPublicForm) {
     return (
       <div className="p-8 max-w-2xl mx-auto">
-        <div className="bg-surface rounded-xl p-8 border border-border text-center">
-          <h1 className="text-3xl font-semibold mb-4">Formulario de Onboarding</h1>
-          <p className="text-muted mb-6">
+        <div className="bg-surface rounded-xl p-8 border border-border">
+          <h1 className="text-3xl font-semibold mb-4 text-center">Formulario de Onboarding</h1>
+          <p className="text-muted mb-6 text-center">
             Ingresa tu número de identificación para comenzar
           </p>
           <div className="space-y-4">
-            <input
-              type="text"
-              value={numeroIdentificacion}
-              onChange={(e) => setNumeroIdentificacion(e.target.value)}
-              placeholder="Número de identificación"
-              className="w-full px-4 py-2 border border-border rounded-lg bg-background"
-            />
+            <div>
+              <label className="block text-sm font-medium mb-2">Número de Identificación *</label>
+              <input
+                type="text"
+                value={numeroIdentificacion}
+                onChange={(e) => {
+                  setNumeroIdentificacion(e.target.value)
+                  setIdError(null)
+                  setIdValid(false)
+                }}
+                onKeyPress={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault()
+                    handleValidateId()
+                  }
+                }}
+                placeholder="Ingresa tu número de identificación"
+                className={`w-full px-4 py-2 border rounded-lg bg-background ${
+                  idError ? 'border-red-500' : 'border-border'
+                }`}
+              />
+              {idError && (
+                <p className="mt-2 text-sm text-red-600">{idError}</p>
+              )}
+            </div>
             <button
-              onClick={() => setShowPublicForm(true)}
-              disabled={!numeroIdentificacion}
+              onClick={handleValidateId}
+              disabled={!numeroIdentificacion.trim() || validatingId}
               className="w-full px-6 py-2.5 bg-accent text-white rounded-lg font-medium hover:bg-accent-hover disabled:opacity-50 transition-colors"
             >
-              Continuar
+              {validatingId ? 'Validando...' : 'Validar y Continuar'}
             </button>
           </div>
         </div>
@@ -256,9 +322,19 @@ function OnboardingContent() {
             ) : preguntas.length === 0 ? (
               <p className="text-muted text-center">No hay preguntas disponibles</p>
             ) : (
-              preguntas.map((pregunta) => (
-                <div key={pregunta.id}>
-                  <label className="block text-sm font-medium mb-2">{pregunta.pregunta}</label>
+              preguntas
+                .filter(p => p.activa)
+                .sort((a, b) => a.orden - b.orden)
+                .map((pregunta) => (
+                <div key={pregunta.id} className="space-y-2">
+                  <div>
+                    <label className="block text-sm font-semibold mb-1">
+                      {pregunta.titulo || pregunta.pregunta}
+                    </label>
+                    {pregunta.descripcion && (
+                      <p className="text-sm text-muted mb-2">{pregunta.descripcion}</p>
+                    )}
+                  </div>
                   {pregunta.tipo === 'texto' && (
                     <input
                       type="text"

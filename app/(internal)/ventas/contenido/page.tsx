@@ -417,6 +417,24 @@ export default function ContenidoPage() {
         </div>
       </div>
 
+      {/* Sección de Videos */}
+      <div className="mt-8">
+        <div className="bg-surface rounded-xl p-6 border border-border">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-xl font-semibold mb-2">Videos</h2>
+              <p className="text-sm text-muted">Gestiona tus videos subidos de YouTube e Instagram</p>
+            </div>
+            <Link
+              href="/ventas/contenido/videos"
+              className="px-6 py-2.5 bg-accent text-white rounded-lg font-medium hover:bg-accent-hover transition-colors"
+            >
+              Ver todos los videos →
+            </Link>
+          </div>
+        </div>
+      </div>
+
       {/* Modal de Nueva Idea */}
       {showIdeaModal && (
         <IdeaModal
