@@ -34,6 +34,7 @@ export default function VideosPage() {
   const [selectedVideo, setSelectedVideo] = useState<Video | null>(null)
   const [selectedIdeaId, setSelectedIdeaId] = useState<string>('')
   const [plataformaFilter, setPlataformaFilter] = useState<'youtube' | 'instagram' | 'all'>('youtube')
+  const [tipoFilter, setTipoFilter] = useState<'long_form' | 'short_form' | 'all'>('long_form')
 
   useEffect(() => {
     fetchVideos()
@@ -114,6 +115,18 @@ export default function VideosPage() {
   const videosShortForm = videosYouTube.filter((v) => v.tipo === 'short_form')
   const videosInstagram = videosFiltrados.filter((v) => v.plataforma === 'instagram')
 
+  // Videos a mostrar según filtros
+  const videosAMostrar = 
+    plataformaFilter === 'youtube'
+      ? tipoFilter === 'all'
+        ? videosYouTube
+        : tipoFilter === 'long_form'
+        ? videosLongForm
+        : videosShortForm
+      : plataformaFilter === 'instagram'
+      ? videosInstagram
+      : videosFiltrados
+
   return (
     <div className="p-8">
       <div className="mb-8">
@@ -139,37 +152,84 @@ export default function VideosPage() {
       </div>
 
       {/* Tabs de plataforma */}
-      <div className="mb-6 flex gap-2 border-b border-border">
-        <button
-          onClick={() => setPlataformaFilter('youtube')}
-          className={`px-4 py-2 font-medium transition-colors ${
-            plataformaFilter === 'youtube'
-              ? 'border-b-2 border-accent text-accent'
-              : 'text-muted hover:text-foreground'
-          }`}
-        >
-          YouTube
-        </button>
-        <button
-          onClick={() => setPlataformaFilter('instagram')}
-          className={`px-4 py-2 font-medium transition-colors ${
-            plataformaFilter === 'instagram'
-              ? 'border-b-2 border-accent text-accent'
-              : 'text-muted hover:text-foreground'
-          }`}
-        >
-          Instagram (próximamente)
-        </button>
-        <button
-          onClick={() => setPlataformaFilter('all')}
-          className={`px-4 py-2 font-medium transition-colors ${
-            plataformaFilter === 'all'
-              ? 'border-b-2 border-accent text-accent'
-              : 'text-muted hover:text-foreground'
-          }`}
-        >
-          Todos
-        </button>
+      <div className="mb-6">
+        <div className="flex gap-2 border-b border-border mb-4">
+          <button
+            onClick={() => {
+              setPlataformaFilter('youtube')
+              setTipoFilter('long_form') // Reset a long_form cuando cambias de plataforma
+            }}
+            className={`px-4 py-2 font-medium transition-colors ${
+              plataformaFilter === 'youtube'
+                ? 'border-b-2 border-accent text-accent'
+                : 'text-muted hover:text-foreground'
+            }`}
+          >
+            YouTube
+          </button>
+          <button
+            onClick={() => {
+              setPlataformaFilter('instagram')
+              setTipoFilter('all')
+            }}
+            className={`px-4 py-2 font-medium transition-colors ${
+              plataformaFilter === 'instagram'
+                ? 'border-b-2 border-accent text-accent'
+                : 'text-muted hover:text-foreground'
+            }`}
+          >
+            Instagram (próximamente)
+          </button>
+          <button
+            onClick={() => {
+              setPlataformaFilter('all')
+              setTipoFilter('all')
+            }}
+            className={`px-4 py-2 font-medium transition-colors ${
+              plataformaFilter === 'all'
+                ? 'border-b-2 border-accent text-accent'
+                : 'text-muted hover:text-foreground'
+            }`}
+          >
+            Todos
+          </button>
+        </div>
+
+        {/* Sub-tabs para YouTube (Long Form / Short Form) */}
+        {plataformaFilter === 'youtube' && (
+          <div className="flex gap-2 border-b border-border">
+            <button
+              onClick={() => setTipoFilter('long_form')}
+              className={`px-4 py-2 text-sm font-medium transition-colors ${
+                tipoFilter === 'long_form'
+                  ? 'border-b-2 border-accent text-accent'
+                  : 'text-muted hover:text-foreground'
+              }`}
+            >
+              Long Form
+            </button>
+            <button
+              onClick={() => setTipoFilter('short_form')}
+              className={`px-4 py-2 text-sm font-medium transition-colors ${
+                tipoFilter === 'short_form'
+                  ? 'border-b-2 border-accent text-accent'
+                  : 'text-muted hover:text-foreground'
+              }`}
+            >
+              Short Form
+            </button>
+            <button
+              onClick={() => setTipoFilter('all')}
+              className={`px-4 py-2 text-sm font-medium transition-colors ${
+                tipoFilter === 'all'
+                  ? 'border-b-2 border-accent text-accent'
+                  : 'text-muted hover:text-foreground'
+              }`}
+            >
+              Todos
+            </button>
+          </div>
+        )}
       </div>
 
       {selectedVideo && (
@@ -220,152 +280,64 @@ export default function VideosPage() {
         </div>
       )}
 
-      <div className="space-y-8">
-        <section>
-          <h2 className="text-2xl font-semibold mb-4">Long Form</h2>
-          {loading ? (
-            <div className="text-center py-12 text-muted">Cargando...</div>
-          ) : videosLongForm.length === 0 ? (
-            <div className="bg-surface rounded-xl p-6 border border-border text-center text-muted">
-              No hay videos de formato largo
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {videosLongForm.map((video) => (
-                <div
-                  key={video.id}
-                  className="bg-surface rounded-xl p-4 border border-border"
-                >
-                  {video.thumbnail_url && (
-                    <img
-                      src={video.thumbnail_url}
-                      alt={video.titulo || 'Video'}
-                      className="w-full h-40 object-cover rounded-lg mb-3"
-                    />
-                  )}
-                  <h3 className="font-medium mb-2">{video.titulo || 'Sin título'}</h3>
-                  <p className="text-xs text-muted mb-2">
-                    {video.plataforma} • {video.duracion ? `${Math.floor(video.duracion / 60)} min` : 'N/A'}
-                  </p>
-                  {video.idea_contenido_id ? (
-                    <p className="text-xs text-green-600 mb-2">✓ Vinculado</p>
-                  ) : (
-                    <button
-                      onClick={() => setSelectedVideo(video)}
-                      className="text-xs text-accent hover:underline mb-2 block"
-                    >
-                      Vincular a idea
-                    </button>
-                  )}
+      {/* Grid de videos */}
+      <div>
+        {loading ? (
+          <div className="text-center py-12 text-muted">Cargando...</div>
+        ) : videosAMostrar.length === 0 ? (
+          <div className="bg-surface rounded-xl p-6 border border-border text-center text-muted">
+            {plataformaFilter === 'youtube'
+              ? tipoFilter === 'long_form'
+                ? 'No hay videos de formato largo'
+                : tipoFilter === 'short_form'
+                ? 'No hay videos de formato corto'
+                : 'No hay videos de YouTube'
+              : plataformaFilter === 'instagram'
+              ? 'No hay videos de Instagram aún. Próximamente.'
+              : 'No hay videos'}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {videosAMostrar.map((video) => (
+              <div
+                key={video.id}
+                className="bg-surface rounded-xl p-4 border border-border"
+              >
+                {video.thumbnail_url && (
+                  <img
+                    src={video.thumbnail_url}
+                    alt={video.titulo || 'Video'}
+                    className="w-full h-40 object-cover rounded-lg mb-3"
+                  />
+                )}
+                <h3 className="font-medium mb-2">{video.titulo || 'Sin título'}</h3>
+                <p className="text-xs text-muted mb-2">
+                  {video.plataforma} •{' '}
+                  {video.duracion
+                    ? video.tipo === 'long_form'
+                      ? `${Math.floor(video.duracion / 60)} min`
+                      : `${video.duracion} seg`
+                    : 'N/A'}
+                </p>
+                {video.idea_contenido_id ? (
+                  <p className="text-xs text-green-600 mb-2">✓ Vinculado</p>
+                ) : (
                   <button
-                    onClick={() => router.push(`/ventas/contenido/videos/${video.id}`)}
-                    className="text-xs text-muted hover:text-accent"
+                    onClick={() => setSelectedVideo(video)}
+                    className="text-xs text-accent hover:underline mb-2 block"
                   >
-                    Ver detalles →
+                    Vincular a idea
                   </button>
-                </div>
-              ))}
-            </div>
-          )}
-        </section>
-
-        <section>
-          <h2 className="text-2xl font-semibold mb-4">Short Form</h2>
-          {loading ? (
-            <div className="text-center py-12 text-muted">Cargando...</div>
-          ) : videosShortForm.length === 0 ? (
-            <div className="bg-surface rounded-xl p-6 border border-border text-center text-muted">
-              No hay videos de formato corto
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {videosShortForm.map((video) => (
-                <div
-                  key={video.id}
-                  className="bg-surface rounded-xl p-4 border border-border"
+                )}
+                <button
+                  onClick={() => router.push(`/ventas/contenido/videos/${video.id}`)}
+                  className="text-xs text-muted hover:text-accent"
                 >
-                  {video.thumbnail_url && (
-                    <img
-                      src={video.thumbnail_url}
-                      alt={video.titulo || 'Video'}
-                      className="w-full h-40 object-cover rounded-lg mb-3"
-                    />
-                  )}
-                  <h3 className="font-medium mb-2">{video.titulo || 'Sin título'}</h3>
-                  <p className="text-xs text-muted mb-2">
-                    {video.plataforma} • {video.duracion ? `${video.duracion} seg` : 'N/A'}
-                  </p>
-                  {video.idea_contenido_id ? (
-                    <p className="text-xs text-green-600 mb-2">✓ Vinculado</p>
-                  ) : (
-                    <button
-                      onClick={() => setSelectedVideo(video)}
-                      className="text-xs text-accent hover:underline mb-2 block"
-                    >
-                      Vincular a idea
-                    </button>
-                  )}
-                  <button
-                    onClick={() => router.push(`/ventas/contenido/videos/${video.id}`)}
-                    className="text-xs text-muted hover:text-accent"
-                  >
-                    Ver detalles →
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-        </section>
-
-        {/* Sección Instagram (próximamente) */}
-        {plataformaFilter === 'instagram' && (
-          <section>
-            <h2 className="text-2xl font-semibold mb-4">Instagram</h2>
-            {loading ? (
-              <div className="text-center py-12 text-muted">Cargando...</div>
-            ) : videosInstagram.length === 0 ? (
-              <div className="bg-surface rounded-xl p-6 border border-border text-center text-muted">
-                No hay videos de Instagram aún. Próximamente.
+                  Ver detalles →
+                </button>
               </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {videosInstagram.map((video) => (
-                  <div
-                    key={video.id}
-                    className="bg-surface rounded-xl p-4 border border-border"
-                  >
-                    {video.thumbnail_url && (
-                      <img
-                        src={video.thumbnail_url}
-                        alt={video.titulo || 'Video'}
-                        className="w-full h-40 object-cover rounded-lg mb-3"
-                      />
-                    )}
-                    <h3 className="font-medium mb-2">{video.titulo || 'Sin título'}</h3>
-                    <p className="text-xs text-muted mb-2">
-                      {video.plataforma} • {video.duracion ? `${video.duracion} seg` : 'N/A'}
-                    </p>
-                    {video.idea_contenido_id ? (
-                      <p className="text-xs text-green-600 mb-2">✓ Vinculado</p>
-                    ) : (
-                      <button
-                        onClick={() => setSelectedVideo(video)}
-                        className="text-xs text-accent hover:underline mb-2 block"
-                      >
-                        Vincular a idea
-                      </button>
-                    )}
-                    <button
-                      onClick={() => router.push(`/ventas/contenido/videos/${video.id}`)}
-                      className="text-xs text-muted hover:text-accent"
-                    >
-                      Ver detalles →
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </section>
+            ))}
+          </div>
         )}
       </div>
     </div>
