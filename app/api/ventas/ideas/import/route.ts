@@ -24,8 +24,36 @@ export async function POST(request: Request) {
       )
     }
 
-    // Obtener el body
-    const data = await request.json()
+    // Obtener el body - puede venir como JSON o como string JSON
+    let rawBody: any
+    try {
+      rawBody = await request.json()
+    } catch (jsonError) {
+      // Si falla el parse JSON, intentar como texto
+      const textBody = await request.text()
+      try {
+        rawBody = JSON.parse(textBody)
+      } catch (parseError) {
+        return NextResponse.json(
+          { error: 'Body inválido: debe ser JSON válido' },
+          { status: 400 }
+        )
+      }
+    }
+
+    // Si el body es un string, parsearlo
+    let data: any = rawBody
+    if (typeof rawBody === 'string') {
+      try {
+        data = JSON.parse(rawBody)
+      } catch (parseError) {
+        return NextResponse.json(
+          { error: 'Body debe ser JSON válido' },
+          { status: 400 }
+        )
+      }
+    }
+
     console.log('Datos recibidos de n8n (import):', JSON.stringify(data, null, 2))
     
     // Normalizar el JSON: el formato es un array donde cada elemento tiene "Ideas" o "ideas" que es un array
@@ -80,8 +108,8 @@ export async function POST(request: Request) {
           }
         }
 
-        // Mapear campos: n8n usa idea_titulo y descripcion_detallada
-        const titulo = ideaParsed.idea_titulo || ideaParsed.titulo_video || item.titulo_video || item.idea_titulo || 'Sin título'
+        // Mapear campos: n8n usa titulo_propuesto o idea_titulo y descripcion_detallada
+        const titulo = ideaParsed.titulo_propuesto || ideaParsed.idea_titulo || ideaParsed.titulo_video || item.titulo_video || item.idea_titulo || item.titulo_propuesto || 'Sin título'
         const descripcionEstrategica = ideaParsed.descripcion_detallada || ideaParsed.descripcion_estrategica || item.descripcion_estrategica || item.descripcion_detallada || null
         
         // Construir URLs de Google Docs

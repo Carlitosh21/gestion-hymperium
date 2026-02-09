@@ -1,12 +1,28 @@
 import { NextResponse } from 'next/server'
 import { query } from '@/lib/db'
-import { requireInternalSession } from '@/lib/auth'
 
 export const dynamic = 'force-dynamic'
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    await requireInternalSession()
+    // Validar API key (igual que el POST)
+    const apiKey = request.headers.get('x-api-key')
+    const expectedApiKey = process.env.N8N_API_KEY
+
+    if (!expectedApiKey) {
+      console.error('N8N_API_KEY no configurada en variables de entorno')
+      return NextResponse.json(
+        { error: 'API key no configurada en el servidor' },
+        { status: 500 }
+      )
+    }
+
+    if (!apiKey || apiKey !== expectedApiKey) {
+      return NextResponse.json(
+        { error: 'API key inválida' },
+        { status: 401 }
+      )
+    }
 
     // Obtener solo ideas en estados posteriores a 'aceptada': long_form, short_form, programado
     const result = await query(
