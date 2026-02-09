@@ -32,67 +32,67 @@ export async function POST() {
     }
     // Si no hay admin, permitir ejecutar migraciones (setup inicial)
     // Ejecutar migraciones en orden
-    const migrations = ['001_initial_schema.sql', '002_auth.sql', '003_leads_pipeline.sql']
+    const migrations = ['001_initial_schema.sql', '002_auth.sql', '003_leads_pipeline.sql', '004_videos_youtube_metrics.sql']
     
     for (const migrationFile of migrations) {
       const migrationPath = join(process.cwd(), 'migrations', migrationFile)
       const migrationSQL = readFileSync(migrationPath, 'utf-8')
     
-    // Ejecutar usando el cliente pg directamente para mejor control
-    const db = query as any
-    
-    // Dividir el SQL en statements, manejando bloques DO $$ correctamente
-    const statements: string[] = []
-    let current = ''
-    let inDoBlock = false
-    let dollarTag = ''
-    let depth = 0
-    
-    const lines = migrationSQL.split('\n')
-    
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i]
-      const trimmed = line.trim()
+      // Ejecutar usando el cliente pg directamente para mejor control
+      const db = query as any
       
-      // Detectar inicio de DO $$
-      if (trimmed.match(/^\s*DO\s+\$\$/) || trimmed.match(/^\s*DO\s+\$[a-zA-Z_]/)) {
-        inDoBlock = true
-        const match = trimmed.match(/DO\s+(\$\$|\$[a-zA-Z_][a-zA-Z0-9_]*\$)/)
-        if (match) {
-          dollarTag = match[1]
+      // Dividir el SQL en statements, manejando bloques DO $$ correctamente
+      const statements: string[] = []
+      let current = ''
+      let inDoBlock = false
+      let dollarTag = ''
+      let depth = 0
+      
+      const lines = migrationSQL.split('\n')
+      
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i]
+        const trimmed = line.trim()
+        
+        // Detectar inicio de DO $$
+        if (trimmed.match(/^\s*DO\s+\$\$/) || trimmed.match(/^\s*DO\s+\$[a-zA-Z_]/)) {
+          inDoBlock = true
+          const match = trimmed.match(/DO\s+(\$\$|\$[a-zA-Z_][a-zA-Z0-9_]*\$)/)
+          if (match) {
+            dollarTag = match[1]
+          }
+          current += line + '\n'
+          continue
         }
-        current += line + '\n'
-        continue
+        
+        // Si estamos en un bloque DO, acumular hasta encontrar el cierre
+        if (inDoBlock) {
+          current += line + '\n'
+          // Buscar el cierre del bloque (END seguido del dollar tag y punto y coma)
+          if (trimmed.includes('END') && trimmed.includes(dollarTag + ';')) {
+            statements.push(current.trim())
+            current = ''
+            inDoBlock = false
+            dollarTag = ''
+          }
+          continue
+        }
+        
+        // Statement normal
+        if (trimmed && !trimmed.startsWith('--')) {
+          current += line + '\n'
+          if (trimmed.endsWith(';')) {
+            statements.push(current.trim())
+            current = ''
+          }
+        }
       }
       
-      // Si estamos en un bloque DO, acumular hasta encontrar el cierre
-      if (inDoBlock) {
-        current += line + '\n'
-        // Buscar el cierre del bloque (END seguido del dollar tag y punto y coma)
-        if (trimmed.includes('END') && trimmed.includes(dollarTag + ';')) {
-          statements.push(current.trim())
-          current = ''
-          inDoBlock = false
-          dollarTag = ''
-        }
-        continue
+      // Agregar el último statement si existe
+      if (current.trim() && !current.trim().startsWith('--')) {
+        statements.push(current.trim())
       }
       
-      // Statement normal
-      if (trimmed && !trimmed.startsWith('--')) {
-        current += line + '\n'
-        if (trimmed.endsWith(';')) {
-          statements.push(current.trim())
-          current = ''
-        }
-      }
-    }
-    
-    // Agregar el último statement si existe
-    if (current.trim() && !current.trim().startsWith('--')) {
-      statements.push(current.trim())
-    }
-    
       // Ejecutar cada statement
       for (const statement of statements) {
         if (statement.trim()) {

@@ -18,7 +18,7 @@ export async function PATCH(
        SET idea_contenido_id = $1, updated_at = CURRENT_TIMESTAMP
        WHERE id = $2
        RETURNING *`,
-      [idea_contenido_id, params.id]
+      [idea_contenido_id || null, params.id]
     )
 
     if (result.rows.length === 0) {

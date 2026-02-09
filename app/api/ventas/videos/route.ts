@@ -10,10 +10,16 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url)
     const tipo = searchParams.get('tipo')
     const plataforma = searchParams.get('plataforma')
+    const id = searchParams.get('id')
 
     let sql = 'SELECT * FROM videos'
     const params: any[] = []
     const conditions: string[] = []
+
+    if (id) {
+      conditions.push(`id = $${params.length + 1}`)
+      params.push(id)
+    }
 
     if (tipo) {
       conditions.push(`tipo = $${params.length + 1}`)
@@ -32,6 +38,12 @@ export async function GET(request: Request) {
     sql += ' ORDER BY fecha_publicacion DESC NULLS LAST, created_at DESC'
 
     const result = await query(sql, params)
+    
+    // Si se pidió un ID específico, devolver solo ese video (o null si no existe)
+    if (id) {
+      return NextResponse.json(result.rows[0] || null)
+    }
+    
     return NextResponse.json(result.rows)
   } catch (error: any) {
     console.error('Error al obtener videos:', error)

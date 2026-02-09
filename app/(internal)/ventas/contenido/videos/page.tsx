@@ -1,6 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+import { RefreshCw } from 'lucide-react'
 
 interface Video {
   id: number
@@ -13,6 +15,9 @@ interface Video {
   thumbnail_url: string | null
   duracion: number | null
   fecha_publicacion: string | null
+  view_count: number | null
+  like_count: number | null
+  comment_count: number | null
 }
 
 interface IdeaContenido {
@@ -21,11 +26,14 @@ interface IdeaContenido {
 }
 
 export default function VideosPage() {
+  const router = useRouter()
   const [videos, setVideos] = useState<Video[]>([])
   const [ideas, setIdeas] = useState<IdeaContenido[]>([])
   const [loading, setLoading] = useState(true)
+  const [syncing, setSyncing] = useState(false)
   const [selectedVideo, setSelectedVideo] = useState<Video | null>(null)
   const [selectedIdeaId, setSelectedIdeaId] = useState<string>('')
+  const [plataformaFilter, setPlataformaFilter] = useState<'youtube' | 'instagram' | 'all'>('youtube')
 
   useEffect(() => {
     fetchVideos()
@@ -74,19 +82,94 @@ export default function VideosPage() {
     }
   }
 
-  const videosLongForm = videos.filter((v) => v.tipo === 'long_form')
-  const videosShortForm = videos.filter((v) => v.tipo === 'short_form')
+  const handleSync = async () => {
+    setSyncing(true)
+    try {
+      const response = await fetch('/api/ventas/videos/sync', {
+        method: 'POST',
+      })
+      const data = await response.json()
+      if (response.ok) {
+        await fetchVideos()
+        alert(`Sincronización completada: ${data.inserted} nuevos, ${data.updated} actualizados`)
+      } else {
+        alert(`Error: ${data.error}`)
+      }
+    } catch (error) {
+      console.error('Error al sincronizar:', error)
+      alert('Error al sincronizar videos')
+    } finally {
+      setSyncing(false)
+    }
+  }
+
+  // Filtrar videos por plataforma
+  const videosFiltrados = videos.filter((v) => 
+    plataformaFilter === 'all' || v.plataforma === plataformaFilter
+  )
+
+  // Filtrar videos de YouTube por tipo
+  const videosYouTube = videosFiltrados.filter((v) => v.plataforma === 'youtube')
+  const videosLongForm = videosYouTube.filter((v) => v.tipo === 'long_form')
+  const videosShortForm = videosYouTube.filter((v) => v.tipo === 'short_form')
+  const videosInstagram = videosFiltrados.filter((v) => v.plataforma === 'instagram')
 
   return (
     <div className="p-8">
       <div className="mb-8">
-        <h1 className="text-4xl font-semibold mb-2">Videos</h1>
-        <p className="text-muted text-lg">
-          Videos obtenidos desde YouTube e Instagram. Vincúlalos a ideas de contenido.
-        </p>
-        <p className="text-sm text-muted mt-2">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h1 className="text-4xl font-semibold mb-2">Videos</h1>
+            <p className="text-muted text-lg">
+              Videos obtenidos desde YouTube e Instagram. Vincúlalos a ideas de contenido.
+            </p>
+          </div>
+          <button
+            onClick={handleSync}
+            disabled={syncing}
+            className="flex items-center gap-2 px-4 py-2 bg-accent text-white rounded-lg font-medium hover:bg-accent-hover disabled:opacity-50 transition-colors"
+          >
+            <RefreshCw className={`w-4 h-4 ${syncing ? 'animate-spin' : ''}`} />
+            {syncing ? 'Sincronizando...' : 'Sincronizar'}
+          </button>
+        </div>
+        <p className="text-sm text-muted">
           Los videos se obtienen automáticamente desde las APIs de YouTube e Instagram mediante n8n.
         </p>
+      </div>
+
+      {/* Tabs de plataforma */}
+      <div className="mb-6 flex gap-2 border-b border-border">
+        <button
+          onClick={() => setPlataformaFilter('youtube')}
+          className={`px-4 py-2 font-medium transition-colors ${
+            plataformaFilter === 'youtube'
+              ? 'border-b-2 border-accent text-accent'
+              : 'text-muted hover:text-foreground'
+          }`}
+        >
+          YouTube
+        </button>
+        <button
+          onClick={() => setPlataformaFilter('instagram')}
+          className={`px-4 py-2 font-medium transition-colors ${
+            plataformaFilter === 'instagram'
+              ? 'border-b-2 border-accent text-accent'
+              : 'text-muted hover:text-foreground'
+          }`}
+        >
+          Instagram (próximamente)
+        </button>
+        <button
+          onClick={() => setPlataformaFilter('all')}
+          className={`px-4 py-2 font-medium transition-colors ${
+            plataformaFilter === 'all'
+              ? 'border-b-2 border-accent text-accent'
+              : 'text-muted hover:text-foreground'
+          }`}
+        >
+          Todos
+        </button>
       </div>
 
       {selectedVideo && (
@@ -169,19 +252,17 @@ export default function VideosPage() {
                   ) : (
                     <button
                       onClick={() => setSelectedVideo(video)}
-                      className="text-xs text-accent hover:underline"
+                      className="text-xs text-accent hover:underline mb-2 block"
                     >
                       Vincular a idea
                     </button>
                   )}
-                  <a
-                    href={video.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                  <button
+                    onClick={() => router.push(`/ventas/contenido/videos/${video.id}`)}
                     className="text-xs text-muted hover:text-accent"
                   >
-                    Ver video →
-                  </a>
+                    Ver detalles →
+                  </button>
                 </div>
               ))}
             </div>
@@ -219,24 +300,73 @@ export default function VideosPage() {
                   ) : (
                     <button
                       onClick={() => setSelectedVideo(video)}
-                      className="text-xs text-accent hover:underline"
+                      className="text-xs text-accent hover:underline mb-2 block"
                     >
                       Vincular a idea
                     </button>
                   )}
-                  <a
-                    href={video.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                  <button
+                    onClick={() => router.push(`/ventas/contenido/videos/${video.id}`)}
                     className="text-xs text-muted hover:text-accent"
                   >
-                    Ver video →
-                  </a>
+                    Ver detalles →
+                  </button>
                 </div>
               ))}
             </div>
           )}
         </section>
+
+        {/* Sección Instagram (próximamente) */}
+        {plataformaFilter === 'instagram' && (
+          <section>
+            <h2 className="text-2xl font-semibold mb-4">Instagram</h2>
+            {loading ? (
+              <div className="text-center py-12 text-muted">Cargando...</div>
+            ) : videosInstagram.length === 0 ? (
+              <div className="bg-surface rounded-xl p-6 border border-border text-center text-muted">
+                No hay videos de Instagram aún. Próximamente.
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {videosInstagram.map((video) => (
+                  <div
+                    key={video.id}
+                    className="bg-surface rounded-xl p-4 border border-border"
+                  >
+                    {video.thumbnail_url && (
+                      <img
+                        src={video.thumbnail_url}
+                        alt={video.titulo || 'Video'}
+                        className="w-full h-40 object-cover rounded-lg mb-3"
+                      />
+                    )}
+                    <h3 className="font-medium mb-2">{video.titulo || 'Sin título'}</h3>
+                    <p className="text-xs text-muted mb-2">
+                      {video.plataforma} • {video.duracion ? `${video.duracion} seg` : 'N/A'}
+                    </p>
+                    {video.idea_contenido_id ? (
+                      <p className="text-xs text-green-600 mb-2">✓ Vinculado</p>
+                    ) : (
+                      <button
+                        onClick={() => setSelectedVideo(video)}
+                        className="text-xs text-accent hover:underline mb-2 block"
+                      >
+                        Vincular a idea
+                      </button>
+                    )}
+                    <button
+                      onClick={() => router.push(`/ventas/contenido/videos/${video.id}`)}
+                      className="text-xs text-muted hover:text-accent"
+                    >
+                      Ver detalles →
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+        )}
       </div>
     </div>
   )
