@@ -394,7 +394,7 @@ function ConversionModal({ lead, onClose, onConvert }: ConversionModalProps) {
   )
 }
 
-function LeadCard({ lead, onEdit }: { lead: Lead; onEdit: (lead: Lead) => void }) {
+function LeadCard({ lead, onEdit, onDelete }: { lead: Lead; onEdit: (lead: Lead) => void; onDelete: (lead: Lead) => void }) {
   const {
     attributes,
     listeners,
@@ -451,6 +451,16 @@ function LeadCard({ lead, onEdit }: { lead: Lead; onEdit: (lead: Lead) => void }
           title="Editar lead"
         >
           <Pencil className="w-4 h-4 text-muted" />
+        </button>
+        <button
+          onClick={(e) => {
+            e.stopPropagation()
+            onDelete(lead)
+          }}
+          className="p-1.5 hover:bg-surface rounded transition-colors"
+          title="Borrar lead"
+        >
+          <Trash2 className="w-4 h-4 text-muted" />
         </button>
       </div>
     </div>
@@ -632,7 +642,7 @@ function SeguimientoModal({ seguimiento, onClose, onSave }: SeguimientoModalProp
   )
 }
 
-function Column({ estado, leads, onEditLead }: { estado: { id: string; label: string; color: string }; leads: Lead[]; onEditLead: (lead: Lead) => void }) {
+function Column({ estado, leads, onEditLead, onDeleteLead }: { estado: { id: string; label: string; color: string }; leads: Lead[]; onEditLead: (lead: Lead) => void; onDeleteLead: (lead: Lead) => void }) {
   const { setNodeRef, isOver } = useDroppable({ id: estado.id })
 
   return (
@@ -651,7 +661,7 @@ function Column({ estado, leads, onEditLead }: { estado: { id: string; label: st
               <p className="text-sm text-muted text-center py-4">Sin leads</p>
             ) : (
               leads.map((lead) => (
-                <LeadCard key={lead.id} lead={lead} onEdit={onEditLead} />
+                <LeadCard key={lead.id} lead={lead} onEdit={onEditLead} onDelete={onDeleteLead} />
               ))
             )}
           </div>
@@ -871,6 +881,24 @@ export default function ProspeccionPage() {
     }
 
     fetchLeads()
+  }
+
+  const handleDeleteLead = async (lead: Lead) => {
+    if (!confirm('¿Borrar este lead? Esta acción no se puede deshacer.')) return
+
+    try {
+      const response = await fetch(`/api/ventas/leads/${lead.id}`, { method: 'DELETE' })
+
+      if (!response.ok) {
+        const data = await response.json()
+        throw new Error(data.error || 'Error al borrar lead')
+      }
+
+      setEditLead(null)
+      fetchLeads()
+    } catch (error: any) {
+      alert(error.message || 'Error al borrar lead')
+    }
   }
 
   const handleConvert = async (data: { nombre: string; email: string; password: string; telefono?: string }) => {
@@ -1111,6 +1139,7 @@ export default function ProspeccionPage() {
                   estado={estado}
                   leads={leadsByEstado[estado.id] || []}
                   onEditLead={setEditLead}
+                  onDeleteLead={handleDeleteLead}
                 />
               ))}
             </div>

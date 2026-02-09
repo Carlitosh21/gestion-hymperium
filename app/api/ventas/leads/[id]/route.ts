@@ -140,3 +140,29 @@ export async function PATCH(
     )
   }
 }
+
+export async function DELETE(
+  _request: Request,
+  { params }: { params: { id: string } }
+) {
+  try {
+    await requireInternalSession()
+
+    const result = await query('DELETE FROM leads WHERE id = $1', [params.id])
+
+    if (result.rowCount === 0) {
+      return NextResponse.json(
+        { error: 'Lead no encontrado' },
+        { status: 404 }
+      )
+    }
+
+    return NextResponse.json({ success: true })
+  } catch (error: any) {
+    console.error('Error al eliminar lead:', error)
+    return NextResponse.json(
+      { error: error.message },
+      { status: 500 }
+    )
+  }
+}
