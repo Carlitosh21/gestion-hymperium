@@ -62,11 +62,15 @@ export async function POST() {
     // Procesar cada idea
     for (const item of ideasData) {
       try {
-        const documentId = item.documentId
-        if (!documentId) {
-          console.warn('Item sin documentId, saltando:', item)
+        // Usar id_long_form como document_id (nuevo formato) o documentId (formato antiguo)
+        const longDocId = item.id_long_form || item.documentId
+        if (!longDocId) {
+          console.warn('Item sin id_long_form/documentId, saltando:', item)
           continue
         }
+
+        // Extraer id_reels (nuevo campo)
+        const reelsDocId = item.id_reels || null
 
         // Parsear el campo "idea" que es un string JSON
         let ideaParsed: any = {}
@@ -74,7 +78,7 @@ export async function POST() {
           try {
             ideaParsed = typeof item.idea === 'string' ? JSON.parse(item.idea) : item.idea
           } catch (parseError) {
-            console.error(`Error al parsear idea para documentId ${documentId}:`, parseError)
+            console.error(`Error al parsear idea para documentId ${longDocId}:`, parseError)
             continue
           }
         }
@@ -82,21 +86,24 @@ export async function POST() {
         // Mapear campos: n8n usa idea_titulo y descripcion_detallada
         const titulo = ideaParsed.idea_titulo || ideaParsed.titulo_video || item.titulo_video || item.idea_titulo || 'Sin título'
         const descripcionEstrategica = ideaParsed.descripcion_detallada || ideaParsed.descripcion_estrategica || item.descripcion_estrategica || item.descripcion_detallada || null
-        const guionLongformUrl = `https://docs.google.com/document/d/${documentId}/edit`
         
-        console.log(`Procesando idea: documentId=${documentId}, titulo=${titulo.substring(0, 50)}...`)
+        // Construir URLs de Google Docs
+        const guionLongformUrl = `https://docs.google.com/document/d/${longDocId}/edit`
+        const guionReelsUrl = reelsDocId ? `https://docs.google.com/document/d/${reelsDocId}/edit` : null
+        
+        console.log(`Procesando idea: documentId=${longDocId}, reelsDocId=${reelsDocId || 'N/A'}, titulo=${titulo.substring(0, 50)}...`)
 
         // Guardar el payload original de n8n para referencia
         const n8nPayload = JSON.stringify(item)
 
         // Upsert usando document_id como clave única
-        console.log(`Intentando insertar/actualizar idea con documentId: ${documentId}`)
+        console.log(`Intentando insertar/actualizar idea con documentId: ${longDocId}`)
         
         let result
         // Verificar primero si existe (fallback más robusto)
         const existing = await query(
           'SELECT id, created_at FROM ideas_contenido WHERE document_id = $1',
-          [documentId]
+          [longDocId]
         )
         
         if (existing.rows.length > 0) {
@@ -107,11 +114,13 @@ export async function POST() {
               titulo = $1,
               descripcion_estrategica = $2,
               guion_longform_url = $3,
-              n8n_payload = $4::jsonb,
+              reels_document_id = $4,
+              guion_reels_url = $5,
+              n8n_payload = $6::jsonb,
               updated_at = CURRENT_TIMESTAMP
-            WHERE document_id = $5
+            WHERE document_id = $7
             RETURNING *`,
-            [titulo, descripcionEstrategica, guionLongformUrl, n8nPayload, documentId]
+            [titulo, descripcionEstrategica, guionLongformUrl, reelsDocId, guionReelsUrl, n8nPayload, longDocId]
           )
         } else {
           // Insertar nuevo
@@ -122,12 +131,14 @@ export async function POST() {
               descripcion_estrategica,
               document_id,
               guion_longform_url,
+              reels_document_id,
+              guion_reels_url,
               n8n_payload,
               estado
             )
-            VALUES ($1, $2, $3, $4, $5::jsonb, 'pendiente')
+            VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, 'pendiente')
             RETURNING *`,
-            [titulo, descripcionEstrategica, documentId, guionLongformUrl, n8nPayload]
+            [titulo, descripcionEstrategica, longDocId, guionLongformUrl, reelsDocId, guionReelsUrl, n8nPayload]
           )
         }
 
@@ -136,16 +147,16 @@ export async function POST() {
           // Usar la verificación previa para determinar si fue insert o update
           if (existing.rows.length > 0) {
             updated++
-            console.log(`✓ Idea actualizada: ${titulo.substring(0, 50)}... (documentId: ${documentId})`)
+            console.log(`✓ Idea actualizada: ${titulo.substring(0, 50)}... (documentId: ${longDocId})`)
           } else {
             inserted++
-            console.log(`✓ Idea insertada: ${titulo.substring(0, 50)}... (documentId: ${documentId})`)
+            console.log(`✓ Idea insertada: ${titulo.substring(0, 50)}... (documentId: ${longDocId})`)
           }
         } else {
-          console.warn(`⚠ No se retornó fila después de insertar/actualizar idea con documentId: ${documentId}`)
+          console.warn(`⚠ No se retornó fila después de insertar/actualizar idea con documentId: ${longDocId}`)
         }
       } catch (error: any) {
-        console.error(`✗ Error al procesar idea con documentId ${item.documentId || 'desconocido'}:`, {
+        console.error(`✗ Error al procesar idea con documentId ${item.id_long_form || item.documentId || 'desconocido'}:`, {
           message: error.message,
           code: error.code,
           detail: error.detail,

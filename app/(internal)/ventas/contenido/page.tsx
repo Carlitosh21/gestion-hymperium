@@ -12,6 +12,8 @@ interface IdeaContenido {
   estado: string
   document_id: string | null
   guion_longform_url: string | null
+  reels_document_id: string | null
+  guion_reels_url: string | null
   created_at: string
 }
 
@@ -225,6 +227,28 @@ export default function ContenidoPage() {
     }
   }
 
+  const handleBorrar = async (id: number) => {
+    if (!confirm('¿Estás seguro de borrar esta idea? Esta acción no se puede deshacer.')) {
+      return
+    }
+
+    try {
+      const response = await fetch(`/api/ventas/ideas/${id}`, {
+        method: 'DELETE',
+      })
+
+      if (response.ok) {
+        fetchIdeas()
+      } else {
+        const error = await response.json()
+        alert(`Error: ${error.error || 'No se pudo borrar la idea'}`)
+      }
+    } catch (error) {
+      console.error('Error al borrar idea:', error)
+      alert('Error al borrar la idea')
+    }
+  }
+
   const ideasPendientes = ideas.filter((i) => i.estado === 'pendiente')
   const ideasAceptadas = ideas.filter((i) => i.estado === 'aceptada')
   const ideasLongForm = ideas.filter((i) => i.estado === 'long_form')
@@ -251,22 +275,33 @@ export default function ContenidoPage() {
   }
 
   const getAccionesForEstado = (idea: IdeaContenido) => {
+    const botonBorrar = (
+      <button
+        onClick={() => handleBorrar(idea.id)}
+        className="w-full px-4 py-2 bg-red-600 text-white text-sm rounded-lg hover:bg-red-700 transition-colors font-medium"
+      >
+        Borrar
+      </button>
+    )
+
     switch (idea.estado) {
       case 'pendiente':
         return (
-          <div className="flex gap-2 mt-4">
-            <button
-              onClick={() => handleCambiarEstado(idea.id, 'aceptada')}
-              className="flex-1 px-4 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 transition-colors font-medium"
-            >
-              Aceptar
-            </button>
-            <button
-              onClick={() => handleRechazar(idea.id)}
-              className="flex-1 px-4 py-2 bg-red-600 text-white text-sm rounded-lg hover:bg-red-700 transition-colors font-medium"
-            >
-              Rechazar
-            </button>
+          <div className="flex flex-col gap-2 mt-4">
+            <div className="flex gap-2">
+              <button
+                onClick={() => handleCambiarEstado(idea.id, 'aceptada')}
+                className="flex-1 px-4 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 transition-colors font-medium"
+              >
+                Aceptar
+              </button>
+              <button
+                onClick={() => handleRechazar(idea.id)}
+                className="flex-1 px-4 py-2 bg-red-600 text-white text-sm rounded-lg hover:bg-red-700 transition-colors font-medium"
+              >
+                Rechazar
+              </button>
+            </div>
           </div>
         )
       case 'aceptada':
@@ -290,6 +325,7 @@ export default function ContenidoPage() {
             >
               Programar
             </button>
+            {botonBorrar}
           </div>
         )
       case 'long_form':
@@ -307,25 +343,28 @@ export default function ContenidoPage() {
             >
               Programar
             </button>
+            {botonBorrar}
           </div>
         )
       case 'short_form':
         return (
-          <div className="mt-4">
+          <div className="flex flex-col gap-2 mt-4">
             <button
               onClick={() => handleCambiarEstado(idea.id, 'programado')}
               className="w-full px-4 py-2 bg-indigo-600 text-white text-sm rounded-lg hover:bg-indigo-700 transition-colors font-medium"
             >
               Programar
             </button>
+            {botonBorrar}
           </div>
         )
       case 'programado':
         return (
-          <div className="mt-4">
+          <div className="flex flex-col gap-2 mt-4">
             <div className="px-4 py-2 bg-indigo-100 text-indigo-800 text-sm rounded-lg text-center font-medium">
               Programado
             </div>
+            {botonBorrar}
           </div>
         )
       default:
@@ -360,17 +399,30 @@ export default function ContenidoPage() {
             )}
           </div>
         )}
-        {idea.guion_longform_url && (
-          <a
-            href={idea.guion_longform_url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-2 text-sm text-accent hover:underline mb-4 font-medium"
-          >
-            <ExternalLink className="w-4 h-4" />
-            Guion Long Form
-          </a>
-        )}
+        <div className="mb-4 space-y-2">
+          {idea.guion_longform_url && (
+            <a
+              href={idea.guion_longform_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 text-sm text-accent hover:underline font-medium"
+            >
+              <ExternalLink className="w-4 h-4" />
+              Guion Long Form
+            </a>
+          )}
+          {idea.guion_reels_url && (
+            <a
+              href={idea.guion_reels_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 text-sm text-accent hover:underline font-medium"
+            >
+              <ExternalLink className="w-4 h-4" />
+              Guion Reels
+            </a>
+          )}
+        </div>
         {getAccionesForEstado(idea)}
       </div>
     )
