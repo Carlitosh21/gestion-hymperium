@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import { Pencil, Trash2 } from 'lucide-react'
 
 interface Ingreso {
   id: number
@@ -295,6 +296,18 @@ function BilleteraTab({
   )
 }
 
+const emptyIngresoForm = {
+  monto: '',
+  descripcion: '',
+  proyecto_id: '',
+  tipo_proyecto: '',
+  pago_desarrollador: '',
+  porcentaje_carlitos: '',
+  porcentaje_joaco: '',
+  porcentaje_hymperium: '',
+  fecha: new Date().toISOString().slice(0, 10),
+}
+
 function IngresosTab({
   ingresos,
   formatCurrency,
@@ -308,53 +321,89 @@ function IngresosTab({
   setShowForm: (show: boolean) => void
   onRefresh: () => void
 }) {
-  const [formData, setFormData] = useState({
-    monto: '',
-    descripcion: '',
-    proyecto_id: '',
-    tipo_proyecto: '',
-    pago_desarrollador: '',
-    porcentaje_carlitos: '',
-    porcentaje_joaco: '',
-    porcentaje_hymperium: '',
-    fecha: new Date().toISOString().slice(0, 10),
-  })
+  const [editIngreso, setEditIngreso] = useState<Ingreso | null>(null)
+  const [formData, setFormData] = useState(emptyIngresoForm)
+
+  useEffect(() => {
+    if (editIngreso) {
+      setFormData({
+        monto: String(editIngreso.monto),
+        descripcion: editIngreso.descripcion || '',
+        proyecto_id: editIngreso.proyecto_id ? String(editIngreso.proyecto_id) : '',
+        tipo_proyecto: editIngreso.tipo_proyecto || '',
+        pago_desarrollador: String(editIngreso.pago_desarrollador ?? 0),
+        porcentaje_carlitos: String(editIngreso.porcentaje_carlitos ?? 0),
+        porcentaje_joaco: String(editIngreso.porcentaje_joaco ?? 0),
+        porcentaje_hymperium: String(editIngreso.porcentaje_hymperium ?? 0),
+        fecha: editIngreso.fecha ? editIngreso.fecha.slice(0, 10) : new Date().toISOString().slice(0, 10),
+      })
+    } else if (!showForm) {
+      setFormData(emptyIngresoForm)
+    }
+  }, [editIngreso, showForm])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     try {
-      const response = await fetch('/api/finanzas/ingresos', {
-        method: 'POST',
+      const payload = {
+        monto: parseFloat(formData.monto),
+        descripcion: formData.descripcion || null,
+        proyecto_id: formData.proyecto_id ? parseInt(formData.proyecto_id) : null,
+        tipo_proyecto: formData.tipo_proyecto || null,
+        pago_desarrollador: parseFloat(formData.pago_desarrollador) || 0,
+        porcentaje_carlitos: parseFloat(formData.porcentaje_carlitos) || 0,
+        porcentaje_joaco: parseFloat(formData.porcentaje_joaco) || 0,
+        porcentaje_hymperium: parseFloat(formData.porcentaje_hymperium) || 0,
+        fecha: formData.fecha || new Date().toISOString(),
+      }
+
+      const url = editIngreso
+        ? `/api/finanzas/ingresos/${editIngreso.id}`
+        : '/api/finanzas/ingresos'
+      const method = editIngreso ? 'PATCH' : 'POST'
+
+      const response = await fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...formData,
-          monto: parseFloat(formData.monto),
-          proyecto_id: formData.proyecto_id ? parseInt(formData.proyecto_id) : null,
-          pago_desarrollador: parseFloat(formData.pago_desarrollador) || 0,
-          porcentaje_carlitos: parseFloat(formData.porcentaje_carlitos) || 0,
-          porcentaje_joaco: parseFloat(formData.porcentaje_joaco) || 0,
-          porcentaje_hymperium: parseFloat(formData.porcentaje_hymperium) || 0,
-        }),
+        body: JSON.stringify(payload),
       })
 
       if (response.ok) {
         setShowForm(false)
-        setFormData({
-          monto: '',
-          descripcion: '',
-          proyecto_id: '',
-          tipo_proyecto: '',
-          pago_desarrollador: '',
-          porcentaje_carlitos: '',
-          porcentaje_joaco: '',
-          porcentaje_hymperium: '',
-          fecha: new Date().toISOString().slice(0, 10),
-        })
+        setEditIngreso(null)
+        setFormData(emptyIngresoForm)
         onRefresh()
       }
     } catch (error) {
-      console.error('Error al crear ingreso:', error)
+      console.error('Error al guardar ingreso:', error)
     }
+  }
+
+  const handleDelete = async (ingreso: Ingreso) => {
+    if (!confirm('¿Borrar este ingreso? Esta acción no se puede deshacer.')) return
+    try {
+      const response = await fetch(`/api/finanzas/ingresos/${ingreso.id}`, { method: 'DELETE' })
+      if (!response.ok) {
+        const data = await response.json()
+        throw new Error(data.error || 'Error al borrar ingreso')
+      }
+      setEditIngreso(null)
+      setShowForm(false)
+      onRefresh()
+    } catch (error: any) {
+      alert(error.message || 'Error al borrar ingreso')
+    }
+  }
+
+  const openEdit = (ingreso: Ingreso) => {
+    setEditIngreso(ingreso)
+    setShowForm(true)
+  }
+
+  const cancelForm = () => {
+    setShowForm(false)
+    setEditIngreso(null)
+    setFormData(emptyIngresoForm)
   }
 
   return (
@@ -362,14 +411,14 @@ function IngresosTab({
       <div className="flex justify-between items-center mb-4">
         <h3 className="text-lg font-semibold">Ingresos</h3>
         <button
-          onClick={() => setShowForm(!showForm)}
+          onClick={() => (editIngreso ? cancelForm() : setShowForm(!showForm))}
           className="px-4 py-2 bg-accent text-white text-sm rounded-lg hover:bg-accent-hover transition-colors"
         >
           {showForm ? 'Cancelar' : '+ Agregar Ingreso'}
         </button>
       </div>
 
-      {showForm && (
+      {(showForm || editIngreso) && (
         <form onSubmit={handleSubmit} className="mb-6 p-6 bg-surface-elevated rounded-lg border border-border space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div>
@@ -464,7 +513,7 @@ function IngresosTab({
             type="submit"
             className="px-6 py-2.5 bg-accent text-white rounded-lg font-medium hover:bg-accent-hover transition-colors"
           >
-            Agregar Ingreso
+            {editIngreso ? 'Guardar cambios' : 'Agregar Ingreso'}
           </button>
         </form>
       )}
@@ -482,9 +531,25 @@ function IngresosTab({
                     <p className="text-sm text-muted mt-1">{ingreso.descripcion}</p>
                   )}
                 </div>
-                <span className="text-sm text-muted">
-                  {new Date(ingreso.fecha).toLocaleDateString('es-ES')}
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-muted">
+                    {new Date(ingreso.fecha).toLocaleDateString('es-ES')}
+                  </span>
+                  <button
+                    onClick={() => openEdit(ingreso)}
+                    className="p-1.5 hover:bg-surface rounded transition-colors"
+                    title="Editar"
+                  >
+                    <Pencil className="w-4 h-4 text-muted" />
+                  </button>
+                  <button
+                    onClick={() => handleDelete(ingreso)}
+                    className="p-1.5 hover:bg-surface rounded transition-colors"
+                    title="Borrar"
+                  >
+                    <Trash2 className="w-4 h-4 text-muted" />
+                  </button>
+                </div>
               </div>
               {(ingreso.porcentaje_carlitos > 0 ||
                 ingreso.porcentaje_joaco > 0 ||
@@ -502,6 +567,14 @@ function IngresosTab({
   )
 }
 
+const emptyEgresoForm = {
+  monto: '',
+  descripcion: '',
+  categoria: '',
+  proyecto_id: '',
+  fecha: new Date().toISOString().slice(0, 10),
+}
+
 function EgresosTab({
   egresos,
   categorias,
@@ -517,41 +590,81 @@ function EgresosTab({
   setShowForm: (show: boolean) => void
   onRefresh: () => void
 }) {
-  const [formData, setFormData] = useState({
-    monto: '',
-    descripcion: '',
-    categoria: '',
-    proyecto_id: '',
-    fecha: new Date().toISOString().slice(0, 10),
-  })
+  const [editEgreso, setEditEgreso] = useState<Egreso | null>(null)
+  const [formData, setFormData] = useState(emptyEgresoForm)
+
+  useEffect(() => {
+    if (editEgreso) {
+      setFormData({
+        monto: String(editEgreso.monto),
+        descripcion: editEgreso.descripcion,
+        categoria: editEgreso.categoria,
+        proyecto_id: editEgreso.proyecto_id ? String(editEgreso.proyecto_id) : '',
+        fecha: editEgreso.fecha ? editEgreso.fecha.slice(0, 10) : new Date().toISOString().slice(0, 10),
+      })
+    } else if (!showForm) {
+      setFormData(emptyEgresoForm)
+    }
+  }, [editEgreso, showForm])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     try {
-      const response = await fetch('/api/finanzas/egresos', {
-        method: 'POST',
+      const payload = {
+        monto: parseFloat(formData.monto),
+        descripcion: formData.descripcion,
+        categoria: formData.categoria,
+        proyecto_id: formData.proyecto_id ? parseInt(formData.proyecto_id) : null,
+        fecha: formData.fecha || new Date().toISOString(),
+      }
+
+      const url = editEgreso
+        ? `/api/finanzas/egresos/${editEgreso.id}`
+        : '/api/finanzas/egresos'
+      const method = editEgreso ? 'PATCH' : 'POST'
+
+      const response = await fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...formData,
-          monto: parseFloat(formData.monto),
-          proyecto_id: formData.proyecto_id ? parseInt(formData.proyecto_id) : null,
-        }),
+        body: JSON.stringify(payload),
       })
 
       if (response.ok) {
         setShowForm(false)
-        setFormData({
-          monto: '',
-          descripcion: '',
-          categoria: '',
-          proyecto_id: '',
-          fecha: new Date().toISOString().slice(0, 10),
-        })
+        setEditEgreso(null)
+        setFormData(emptyEgresoForm)
         onRefresh()
       }
     } catch (error) {
-      console.error('Error al crear egreso:', error)
+      console.error('Error al guardar egreso:', error)
     }
+  }
+
+  const handleDelete = async (egreso: Egreso) => {
+    if (!confirm('¿Borrar este egreso? Esta acción no se puede deshacer.')) return
+    try {
+      const response = await fetch(`/api/finanzas/egresos/${egreso.id}`, { method: 'DELETE' })
+      if (!response.ok) {
+        const data = await response.json()
+        throw new Error(data.error || 'Error al borrar egreso')
+      }
+      setEditEgreso(null)
+      setShowForm(false)
+      onRefresh()
+    } catch (error: any) {
+      alert(error.message || 'Error al borrar egreso')
+    }
+  }
+
+  const openEdit = (egreso: Egreso) => {
+    setEditEgreso(egreso)
+    setShowForm(true)
+  }
+
+  const cancelForm = () => {
+    setShowForm(false)
+    setEditEgreso(null)
+    setFormData(emptyEgresoForm)
   }
 
   return (
@@ -559,14 +672,14 @@ function EgresosTab({
       <div className="flex justify-between items-center mb-4">
         <h3 className="text-lg font-semibold">Egresos</h3>
         <button
-          onClick={() => setShowForm(!showForm)}
+          onClick={() => (editEgreso ? cancelForm() : setShowForm(!showForm))}
           className="px-4 py-2 bg-accent text-white text-sm rounded-lg hover:bg-accent-hover transition-colors"
         >
           {showForm ? 'Cancelar' : '+ Agregar Egreso'}
         </button>
       </div>
 
-      {showForm && (
+      {(showForm || editEgreso) && (
         <form onSubmit={handleSubmit} className="mb-6 p-6 bg-surface-elevated rounded-lg border border-border space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div>
@@ -589,6 +702,10 @@ function EgresosTab({
                 className="w-full px-4 py-2 border border-border rounded-lg bg-background"
               >
                 <option value="">Seleccionar...</option>
+                {editEgreso &&
+                  !categorias.some((c) => c.nombre === editEgreso.categoria) && (
+                    <option value={editEgreso.categoria}>{editEgreso.categoria}</option>
+                  )}
                 {categorias.map((cat) => (
                   <option key={cat.id} value={cat.nombre}>
                     {cat.nombre}
@@ -629,7 +746,7 @@ function EgresosTab({
             type="submit"
             className="px-6 py-2.5 bg-accent text-white rounded-lg font-medium hover:bg-accent-hover transition-colors"
           >
-            Agregar Egreso
+            {editEgreso ? 'Guardar cambios' : 'Agregar Egreso'}
           </button>
         </form>
       )}
@@ -646,9 +763,25 @@ function EgresosTab({
                   <p className="text-sm text-muted mt-1">{egreso.descripcion}</p>
                   <p className="text-xs text-muted mt-1">Categoría: {egreso.categoria}</p>
                 </div>
-                <span className="text-sm text-muted">
-                  {new Date(egreso.fecha).toLocaleDateString('es-ES')}
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-muted">
+                    {new Date(egreso.fecha).toLocaleDateString('es-ES')}
+                  </span>
+                  <button
+                    onClick={() => openEdit(egreso)}
+                    className="p-1.5 hover:bg-surface rounded transition-colors"
+                    title="Editar"
+                  >
+                    <Pencil className="w-4 h-4 text-muted" />
+                  </button>
+                  <button
+                    onClick={() => handleDelete(egreso)}
+                    className="p-1.5 hover:bg-surface rounded transition-colors"
+                    title="Borrar"
+                  >
+                    <Trash2 className="w-4 h-4 text-muted" />
+                  </button>
+                </div>
               </div>
             </div>
           ))}

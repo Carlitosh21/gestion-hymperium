@@ -256,7 +256,7 @@ export default function FinanzasStatsPage() {
                         border: '1px solid hsl(var(--border))',
                         borderRadius: '8px',
                       }}
-                      formatter={(value: number, name: string) => [formatCurrency(value), name]}
+                      formatter={(value: number | undefined, name: string | undefined) => [formatCurrency(value ?? 0), name ?? '']}
                     />
                     <Legend />
                     <Line
@@ -315,7 +315,7 @@ export default function FinanzasStatsPage() {
                         border: '1px solid hsl(var(--border))',
                         borderRadius: '8px',
                       }}
-                      formatter={(value: number, name: string) => [formatCurrency(value), name]}
+                      formatter={(value: number | undefined, name: string | undefined) => [formatCurrency(value ?? 0), name ?? '']}
                     />
                     <Legend />
                     <Bar dataKey="bruto" fill="#3b82f6" name="Ingresos Brutos" radius={[4, 4, 0, 0]} />
@@ -356,14 +356,14 @@ export default function FinanzasStatsPage() {
                             cx="50%"
                             cy="50%"
                             outerRadius={80}
-                            label={({ categoria }) => categoria}
+                            label={({ name }) => name}
                           >
                             {stats.egresosPorCategoria.map((_, index) => (
                               <Cell key={index} fill={COLORS[index % COLORS.length]} />
                             ))}
                           </Pie>
                           <Tooltip
-                            formatter={(value: number) => formatCurrency(value)}
+                            formatter={(value: number | undefined) => formatCurrency(value ?? 0)}
                             contentStyle={{
                               backgroundColor: 'hsl(var(--surface))',
                               border: '1px solid hsl(var(--border))',
