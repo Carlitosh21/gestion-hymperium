@@ -276,7 +276,7 @@ export default function VentasStatsPage() {
           <section>
             <div className="flex items-center gap-3 mb-6">
               <Video className="w-6 h-6 text-red-500" />
-              <h2 className="text-2xl font-semibold">Contenido (YouTube)</h2>
+              <h2 className="text-2xl font-semibold">Contenido (YouTube Long Form)</h2>
             </div>
 
             <div className="bg-surface rounded-xl p-6 border border-border mb-6">

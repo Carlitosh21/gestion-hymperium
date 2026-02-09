@@ -217,21 +217,23 @@ export async function GET(request: Request) {
     )
     const cierresPostLlamada = parseInt(cierresPostLlamadaResult.rows[0]?.count || '0')
     
-    // CONTENIDO (YouTube): Visitas totales
+    // CONTENIDO (YouTube Long Form): Visitas totales
     const viewsTotalesResult = await query(
       `SELECT COALESCE(SUM(view_count), 0) as total
        FROM videos
        WHERE plataforma = 'youtube'
+         AND tipo = 'long_form'
          AND created_at >= $1 AND created_at <= $2`,
       [startDate, endDate]
     )
     const viewsTotales = parseInt(viewsTotalesResult.rows[0]?.total || '0')
     
-    // CONTENIDO (YouTube): Top videos
+    // CONTENIDO (YouTube Long Form): Top videos
     const topVideosResult = await query(
       `SELECT id, titulo, view_count, like_count, comment_count
        FROM videos
        WHERE plataforma = 'youtube'
+         AND tipo = 'long_form'
          AND created_at >= $1 AND created_at <= $2
        ORDER BY view_count DESC NULLS LAST
        LIMIT 10`,
