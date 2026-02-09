@@ -90,59 +90,92 @@ export async function POST() {
         const n8nPayload = JSON.stringify(item)
 
         // Upsert usando document_id como clave única
-        const result = await query(
-          `INSERT INTO ideas_contenido (
-            titulo,
-            descripcion_estrategica,
-            document_id,
-            guion_longform_url,
-            n8n_payload,
-            estado
-          )
-          VALUES ($1, $2, $3, $4, $5::jsonb, 'pendiente')
-          ON CONFLICT (document_id) 
-          DO UPDATE SET
-            titulo = EXCLUDED.titulo,
-            descripcion_estrategica = EXCLUDED.descripcion_estrategica,
-            guion_longform_url = EXCLUDED.guion_longform_url,
-            n8n_payload = EXCLUDED.n8n_payload,
-            updated_at = CURRENT_TIMESTAMP
-          RETURNING *`,
-          [
-            titulo,
-            descripcionEstrategica,
-            documentId,
-            guionLongformUrl,
-            n8nPayload
-          ]
+        console.log(`Intentando insertar/actualizar idea con documentId: ${documentId}`)
+        
+        let result
+        // Verificar primero si existe (fallback más robusto)
+        const existing = await query(
+          'SELECT id, created_at FROM ideas_contenido WHERE document_id = $1',
+          [documentId]
         )
+        
+        if (existing.rows.length > 0) {
+          // Actualizar existente
+          console.log(`Idea existente encontrada, actualizando...`)
+          result = await query(
+            `UPDATE ideas_contenido SET
+              titulo = $1,
+              descripcion_estrategica = $2,
+              guion_longform_url = $3,
+              n8n_payload = $4::jsonb,
+              updated_at = CURRENT_TIMESTAMP
+            WHERE document_id = $5
+            RETURNING *`,
+            [titulo, descripcionEstrategica, guionLongformUrl, n8nPayload, documentId]
+          )
+        } else {
+          // Insertar nuevo
+          console.log(`Idea nueva, insertando...`)
+          result = await query(
+            `INSERT INTO ideas_contenido (
+              titulo,
+              descripcion_estrategica,
+              document_id,
+              guion_longform_url,
+              n8n_payload,
+              estado
+            )
+            VALUES ($1, $2, $3, $4, $5::jsonb, 'pendiente')
+            RETURNING *`,
+            [titulo, descripcionEstrategica, documentId, guionLongformUrl, n8nPayload]
+          )
+        }
 
         if (result.rows.length > 0) {
-          // Verificar si fue insert o update comparando created_at y updated_at
           const row = result.rows[0]
-          if (row.created_at === row.updated_at) {
-            inserted++
-          } else {
+          // Usar la verificación previa para determinar si fue insert o update
+          if (existing.rows.length > 0) {
             updated++
+            console.log(`✓ Idea actualizada: ${titulo.substring(0, 50)}... (documentId: ${documentId})`)
+          } else {
+            inserted++
+            console.log(`✓ Idea insertada: ${titulo.substring(0, 50)}... (documentId: ${documentId})`)
           }
+        } else {
+          console.warn(`⚠ No se retornó fila después de insertar/actualizar idea con documentId: ${documentId}`)
         }
       } catch (error: any) {
-        console.error(`Error al procesar idea ${item.documentId}:`, error.message)
+        console.error(`✗ Error al procesar idea con documentId ${item.documentId || 'desconocido'}:`, {
+          message: error.message,
+          code: error.code,
+          detail: error.detail,
+          constraint: error.constraint,
+          stack: error.stack
+        })
         // Continuar con la siguiente idea
         continue
       }
     }
 
+    console.log(`Sincronización completada: ${inserted} nuevas, ${updated} actualizadas, ${ideasData.length} procesadas`)
     return NextResponse.json({
       success: true,
       inserted,
       updated,
       total: inserted + updated,
+      procesadas: ideasData.length,
     })
   } catch (error: any) {
-    console.error('Error al sincronizar ideas:', error)
+    console.error('Error al sincronizar ideas:', {
+      message: error.message,
+      stack: error.stack,
+      name: error.name
+    })
     return NextResponse.json(
-      { error: error.message || 'Error al sincronizar ideas' },
+      { 
+        error: error.message || 'Error al sincronizar ideas',
+        details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+      },
       { status: 500 }
     )
   }
