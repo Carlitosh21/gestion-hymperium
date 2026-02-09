@@ -31,21 +31,27 @@ export async function POST() {
     const data = await response.json()
     console.log('Datos recibidos de n8n:', JSON.stringify(data, null, 2))
     
-    // Normalizar el JSON: el formato es un array donde cada elemento tiene "Ideas" que es un array
+    // Normalizar el JSON: el formato es un array donde cada elemento tiene "Ideas" o "ideas" que es un array
     let ideasData: any[] = []
     
     if (Array.isArray(data)) {
-      // Aplanar el array: cada elemento puede tener "Ideas" que es un array
+      // Aplanar el array: cada elemento puede tener "Ideas" o "ideas" que es un array
       data.forEach((item: any) => {
-        if (item.Ideas && Array.isArray(item.Ideas)) {
-          ideasData.push(...item.Ideas)
+        // Manejar tanto "Ideas" (mayúscula) como "ideas" (minúscula)
+        const ideasArray = item.Ideas || item.ideas
+        if (ideasArray && Array.isArray(ideasArray)) {
+          ideasData.push(...ideasArray)
         } else if (item.documentId || item.idea) {
           // Si ya está aplanado
           ideasData.push(item)
         }
       })
-    } else if (data.Ideas && Array.isArray(data.Ideas)) {
-      ideasData = data.Ideas
+    } else {
+      // Manejar tanto "Ideas" (mayúscula) como "ideas" (minúscula)
+      const ideasArray = data.Ideas || data.ideas
+      if (ideasArray && Array.isArray(ideasArray)) {
+        ideasData = ideasArray
+      }
     }
     
     console.log(`Total de ideas normalizadas: ${ideasData.length}`)
