@@ -40,15 +40,21 @@ export async function GET(request: Request) {
     
     const { startDate, endDate } = getDateRange(range)
     
-    // PROSPECCIÓN: Timeseries de leads nuevos por día
+    // PROSPECCIÓN: Timeseries de leads nuevos por día (todos los días del rango, 0 si no hay)
     const leadsNuevosResult = await query(
-      `SELECT 
-        DATE(created_at) as dia,
-        COUNT(*) as count
-      FROM leads
-      WHERE created_at >= $1 AND created_at <= $2
-      GROUP BY DATE(created_at)
-      ORDER BY dia ASC`,
+      `SELECT d.dia::date as dia, COALESCE(c.cnt, 0)::int as count
+       FROM generate_series(
+         $1::timestamp,
+         $2::timestamp,
+         '1 day'::interval
+       ) AS d(dia)
+       LEFT JOIN (
+         SELECT DATE(created_at) as dia, COUNT(*) as cnt
+         FROM leads
+         WHERE created_at >= $1 AND created_at <= $2
+         GROUP BY DATE(created_at)
+       ) c ON c.dia = d.dia::date
+       ORDER BY d.dia ASC`,
       [startDate, endDate]
     )
     

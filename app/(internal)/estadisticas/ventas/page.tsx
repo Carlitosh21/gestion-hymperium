@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, TrendingUp, MessageSquare, Calendar, Target, Send, Phone, Video, BarChart3, Eye, ThumbsUp, MessageCircle } from 'lucide-react'
+import { ArrowLeft, TrendingUp, MessageSquare, Calendar, Target, Send, Phone, Video, BarChart3, Eye, ThumbsUp, MessageCircle, RefreshCw } from 'lucide-react'
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 
 interface StatsData {
@@ -96,17 +96,27 @@ export default function VentasStatsPage() {
             <p className="text-muted">Prospección, Llamadas y Contenido</p>
           </div>
         </div>
-        <select
-          value={range}
-          onChange={(e) => setRange(e.target.value)}
-          className="px-4 py-2 border border-border rounded-lg bg-background text-sm font-medium"
-        >
-          {RANGE_OPTIONS.map((opt) => (
-            <option key={opt.value} value={opt.value}>
-              {opt.label}
-            </option>
-          ))}
-        </select>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => fetchStats()}
+            disabled={loading}
+            className="flex items-center gap-2 px-4 py-2 border border-border rounded-lg bg-background text-sm font-medium hover:bg-surface-elevated disabled:opacity-50 transition-colors"
+          >
+            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+            Actualizar
+          </button>
+          <select
+            value={range}
+            onChange={(e) => setRange(e.target.value)}
+            className="px-4 py-2 border border-border rounded-lg bg-background text-sm font-medium"
+          >
+            {RANGE_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
 
       {loading && (
@@ -146,6 +156,8 @@ export default function VentasStatsPage() {
                     <YAxis 
                       stroke="hsl(var(--muted-foreground))"
                       tick={{ fill: 'hsl(var(--muted-foreground))' }}
+                      allowDecimals={false}
+                      domain={[0, 'auto']}
                     />
                     <Tooltip 
                       contentStyle={{ 
