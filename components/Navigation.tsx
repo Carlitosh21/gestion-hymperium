@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Home, Briefcase, Users, BarChart3, TrendingUp, Settings } from 'lucide-react'
+import { Home, Briefcase, Users, BarChart3, TrendingUp, DollarSign, Settings } from 'lucide-react'
 
 const menuItems = [
   { href: '/', label: 'Inicio', icon: Home },
@@ -10,11 +10,17 @@ const menuItems = [
   { href: '/clientes', label: 'Clientes', icon: Users },
   { href: '/estadisticas', label: 'Estadísticas', icon: BarChart3 },
   { href: '/proyecciones', label: 'Proyecciones', icon: TrendingUp },
+  { href: '/gestion-interna/finanzas', label: 'Finanzas', icon: DollarSign },
   { href: '/gestion-interna', label: 'Gestión Interna', icon: Settings },
 ]
 
 export function Navigation() {
   const pathname = usePathname()
+
+  // Activar solo el item con el href más específico que matchea (evitar doble active)
+  const bestMatchHref = menuItems
+    .filter((item) => pathname === item.href || (item.href !== '/' && pathname?.startsWith(item.href)))
+    .sort((a, b) => b.href.length - a.href.length)[0]?.href
 
   return (
     <aside className="w-64 glass border-r border-border min-h-screen p-6">
@@ -25,8 +31,7 @@ export function Navigation() {
       
       <nav className="space-y-2">
         {menuItems.map((item) => {
-          const isActive = pathname === item.href || 
-            (item.href !== '/' && pathname?.startsWith(item.href))
+          const isActive = item.href === bestMatchHref
           const Icon = item.icon
           
           return (

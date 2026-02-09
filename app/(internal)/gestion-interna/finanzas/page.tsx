@@ -37,8 +37,10 @@ interface Categoria {
 
 interface Billetera {
   total_ingresos: number
+  total_ingresos_hymperium: number
   total_egresos: number
   total_disponible: number
+  total_disponible_hymperium: number
   categorias: Categoria[]
 }
 
@@ -120,7 +122,12 @@ export default function FinanzasPage() {
       ) : (
         <>
           {activeTab === 'billetera' && (
-            <BilleteraTab billetera={billetera} formatCurrency={formatCurrency} />
+            <BilleteraTab
+              billetera={billetera}
+              ingresos={ingresos}
+              egresos={egresos}
+              formatCurrency={formatCurrency}
+            />
           )}
           {activeTab === 'ingresos' && (
             <IngresosTab
@@ -157,36 +164,91 @@ export default function FinanzasPage() {
 
 function BilleteraTab({
   billetera,
+  ingresos,
+  egresos,
   formatCurrency,
 }: {
   billetera: Billetera | null
+  ingresos: Ingreso[]
+  egresos: Egreso[]
   formatCurrency: (amount: number) => string
 }) {
   if (!billetera) {
     return <div className="text-muted">Cargando billetera...</div>
   }
 
+  // Últimos movimientos: combinar ingresos (crédito) y egresos (débito) ordenados por fecha
+  const movimientos = [
+    ...ingresos.map((i) => ({
+      id: `ing-${i.id}`,
+      tipo: 'ingreso' as const,
+      fecha: i.fecha,
+      descripcion: i.descripcion || 'Ingreso',
+      monto: ((i.monto - (i.pago_desarrollador || 0)) * ((i.porcentaje_hymperium || 0) / 100)),
+    })),
+    ...egresos.map((e) => ({
+      id: `egr-${e.id}`,
+      tipo: 'egreso' as const,
+      fecha: e.fecha,
+      descripcion: e.descripcion,
+      monto: -e.monto,
+    })),
+  ]
+    .sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime())
+    .slice(0, 10)
+
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="bg-surface rounded-xl p-6 border border-border">
-          <h3 className="text-sm text-muted mb-2">Total Ingresos</h3>
-          <p className="text-2xl font-semibold text-green-600">
-            {formatCurrency(billetera.total_ingresos)}
+          <h3 className="text-sm text-muted mb-2">Cuenta Hymperium — Saldo</h3>
+          <p className="text-2xl font-semibold">
+            {formatCurrency(billetera.total_disponible_hymperium)}
           </p>
         </div>
         <div className="bg-surface rounded-xl p-6 border border-border">
-          <h3 className="text-sm text-muted mb-2">Total Egresos</h3>
+          <h3 className="text-sm text-muted mb-2">Ingresos Hymperium</h3>
+          <p className="text-2xl font-semibold text-green-600">
+            {formatCurrency(billetera.total_ingresos_hymperium)}
+          </p>
+        </div>
+        <div className="bg-surface rounded-xl p-6 border border-border">
+          <h3 className="text-sm text-muted mb-2">Egresos</h3>
           <p className="text-2xl font-semibold text-red-600">
             {formatCurrency(billetera.total_egresos)}
           </p>
         </div>
-        <div className="bg-surface rounded-xl p-6 border border-border">
-          <h3 className="text-sm text-muted mb-2">Disponible</h3>
-          <p className="text-2xl font-semibold">
-            {formatCurrency(billetera.total_disponible)}
-          </p>
-        </div>
+      </div>
+
+      <div className="bg-surface rounded-xl p-6 border border-border">
+        <h3 className="text-xl font-semibold mb-4">Últimos movimientos</h3>
+        {movimientos.length === 0 ? (
+          <p className="text-muted">No hay movimientos</p>
+        ) : (
+          <div className="space-y-2">
+            {movimientos.map((m) => (
+              <div
+                key={m.id}
+                className="flex justify-between items-center py-2 border-b border-border last:border-0"
+              >
+                <div>
+                  <span className="font-medium">{m.descripcion}</span>
+                  <span className="text-sm text-muted ml-2">
+                    {new Date(m.fecha).toLocaleDateString('es-AR')}
+                  </span>
+                </div>
+                <span
+                  className={
+                    m.monto >= 0 ? 'text-green-600 font-medium' : 'text-red-600 font-medium'
+                  }
+                >
+                  {m.monto >= 0 ? '+' : ''}
+                  {formatCurrency(m.monto)}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="bg-surface rounded-xl p-6 border border-border">

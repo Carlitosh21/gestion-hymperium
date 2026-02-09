@@ -7,29 +7,38 @@ export const dynamic = 'force-dynamic'
 export async function GET() {
   try {
     await requireInternalSession()
-    // Calcular total de ingresos
+
+    // Total ingresos brutos (para estadísticas, no se muestra en Finanzas)
     const ingresosResult = await query(
       'SELECT COALESCE(SUM(monto), 0) as total FROM ingresos'
     )
     const totalIngresos = parseFloat(ingresosResult.rows[0].total)
 
-    // Calcular total de egresos
+    // Ingresos Hymperium: (monto - pago_desarrollador) * (porcentaje_hymperium / 100)
+    const hymperiumResult = await query(`
+      SELECT COALESCE(SUM((monto - COALESCE(pago_desarrollador, 0)) * (COALESCE(porcentaje_hymperium, 0) / 100)), 0) as total
+      FROM ingresos
+    `)
+    const totalIngresosHymperium = parseFloat(hymperiumResult.rows[0].total)
+
+    // Total egresos
     const egresosResult = await query(
       'SELECT COALESCE(SUM(monto), 0) as total FROM egresos'
     )
     const totalEgresos = parseFloat(egresosResult.rows[0].total)
 
     const totalDisponible = totalIngresos - totalEgresos
+    const totalDisponibleHymperium = totalIngresosHymperium - totalEgresos
 
     // Obtener categorías
     const categoriasResult = await query(
       'SELECT * FROM categorias_billetera ORDER BY nombre'
     )
 
-    // Calcular montos por categoría según porcentajes
+    // Calcular montos por categoría según porcentajes (usando plata Hymperium)
     const categorias = categoriasResult.rows.map((cat) => ({
       ...cat,
-      monto_asignado: (totalDisponible * parseFloat(cat.porcentaje)) / 100,
+      monto_asignado: (totalDisponibleHymperium * parseFloat(cat.porcentaje)) / 100,
     }))
 
     // Calcular egresos por categoría
@@ -48,13 +57,15 @@ export async function GET() {
       ...cat,
       monto_gastado: egresosMap[cat.nombre] || 0,
       monto_disponible:
-        (totalDisponible * parseFloat(cat.porcentaje)) / 100 - (egresosMap[cat.nombre] || 0),
+        (totalDisponibleHymperium * parseFloat(cat.porcentaje)) / 100 - (egresosMap[cat.nombre] || 0),
     }))
 
     return NextResponse.json({
       total_ingresos: totalIngresos,
+      total_ingresos_hymperium: totalIngresosHymperium,
       total_egresos: totalEgresos,
       total_disponible: totalDisponible,
+      total_disponible_hymperium: totalDisponibleHymperium,
       categorias: categoriasConEgresos,
     })
   } catch (error: any) {
