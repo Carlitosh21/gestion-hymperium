@@ -20,7 +20,7 @@ import {
   useSortable,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { GripVertical } from 'lucide-react'
+import { GripVertical, Pencil } from 'lucide-react'
 
 interface Lead {
   id: number
@@ -50,6 +50,106 @@ const ESTADOS_PIPELINE = [
 
 const ESTADOS_CONVERSION = ['seña', 'downsell', 'cerrado']
 const ESTADOS_REQUIEREN_LLAMADA = ['llamada_agendada', 'llamada_reagendada']
+
+interface LeadEditModalProps {
+  lead: Lead | null
+  onClose: () => void
+  onSave: (id: number, data: { usuario_ig: string; notas: string | null }) => Promise<void>
+}
+
+function LeadEditModal({ lead, onClose, onSave }: LeadEditModalProps) {
+  const [usuarioIg, setUsuarioIg] = useState('')
+  const [notas, setNotas] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (lead) {
+      setUsuarioIg(lead.usuario_ig || '')
+      setNotas(lead.notas || '')
+    }
+  }, [lead])
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!lead || !usuarioIg.trim()) {
+      setError('Usuario IG es requerido')
+      return
+    }
+
+    setError(null)
+    setSubmitting(true)
+
+    try {
+      await onSave(lead.id, {
+        usuario_ig: usuarioIg.trim(),
+        notas: notas.trim() || null,
+      })
+      onClose()
+    } catch (err: any) {
+      setError(err.message || 'Error al guardar lead')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  if (!lead) return null
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-surface rounded-xl p-6 border border-border max-w-md w-full mx-4">
+        <h2 className="text-xl font-semibold mb-4">Editar Lead</h2>
+
+        {error && (
+          <div className="mb-4 p-3 bg-red-50 text-red-800 rounded-lg border border-red-200 text-sm">
+            {error}
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium mb-2">Usuario IG *</label>
+            <input
+              type="text"
+              required
+              value={usuarioIg}
+              onChange={(e) => setUsuarioIg(e.target.value.replace('@', ''))}
+              className="w-full px-4 py-2 border border-border rounded-lg bg-background"
+              placeholder="ej: carlosvercellone"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-2">Notas (opcional)</label>
+            <textarea
+              value={notas}
+              onChange={(e) => setNotas(e.target.value)}
+              rows={3}
+              className="w-full px-4 py-2 border border-border rounded-lg bg-background"
+              placeholder="Notas adicionales sobre el lead..."
+            />
+          </div>
+
+          <div className="flex gap-3">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 px-4 py-2 border border-border rounded-lg hover:bg-surface-elevated transition-colors"
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              disabled={submitting}
+              className="flex-1 px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent-hover disabled:opacity-50 transition-colors"
+            >
+              {submitting ? 'Guardando...' : 'Guardar'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
 
 interface ConversionModalProps {
   lead: Lead | null
@@ -270,7 +370,7 @@ function ConversionModal({ lead, onClose, onConvert }: ConversionModalProps) {
   )
 }
 
-function LeadCard({ lead }: { lead: Lead }) {
+function LeadCard({ lead, onEdit }: { lead: Lead; onEdit: (lead: Lead) => void }) {
   const {
     attributes,
     listeners,
@@ -318,12 +418,22 @@ function LeadCard({ lead }: { lead: Lead }) {
             Última edición: {formatFecha(lead.estado_editado_at)}
           </div>
         </div>
+        <button
+          onClick={(e) => {
+            e.stopPropagation()
+            onEdit(lead)
+          }}
+          className="ml-2 p-1.5 hover:bg-surface rounded transition-colors"
+          title="Editar lead"
+        >
+          <Pencil className="w-4 h-4 text-muted" />
+        </button>
       </div>
     </div>
   )
 }
 
-function Column({ estado, leads }: { estado: { id: string; label: string; color: string }; leads: Lead[] }) {
+function Column({ estado, leads, onEditLead }: { estado: { id: string; label: string; color: string }; leads: Lead[]; onEditLead: (lead: Lead) => void }) {
   const { setNodeRef, isOver } = useDroppable({ id: estado.id })
 
   return (
@@ -342,7 +452,7 @@ function Column({ estado, leads }: { estado: { id: string; label: string; color:
               <p className="text-sm text-muted text-center py-4">Sin leads</p>
             ) : (
               leads.map((lead) => (
-                <LeadCard key={lead.id} lead={lead} />
+                <LeadCard key={lead.id} lead={lead} onEdit={onEditLead} />
               ))
             )}
           </div>
@@ -365,6 +475,7 @@ export default function ProspeccionPage() {
     prevEstado: string
     newEstado: string
   } | null>(null)
+  const [editLead, setEditLead] = useState<Lead | null>(null)
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -536,6 +647,21 @@ export default function ProspeccionPage() {
     }
   }
 
+  const handleEditLead = async (id: number, data: { usuario_ig: string; notas: string | null }) => {
+    const response = await fetch(`/api/ventas/leads/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    })
+
+    if (!response.ok) {
+      const error = await response.json()
+      throw new Error(error.error || 'Error al guardar lead')
+    }
+
+    fetchLeads()
+  }
+
   const handleConvert = async (data: { nombre: string; email: string; password: string; telefono?: string }) => {
     if (!conversionLead) return
 
@@ -626,6 +752,7 @@ export default function ProspeccionPage() {
                   key={estado.id}
                   estado={estado}
                   leads={leadsByEstado[estado.id] || []}
+                  onEditLead={setEditLead}
                 />
               ))}
             </div>
@@ -655,6 +782,14 @@ export default function ProspeccionPage() {
           newEstado={llamadaModal.newEstado}
           onClose={handleLlamadaCancel}
           onConfirm={handleLlamadaConfirm}
+        />
+      )}
+
+      {editLead && (
+        <LeadEditModal
+          lead={editLead}
+          onClose={() => setEditLead(null)}
+          onSave={handleEditLead}
         />
       )}
     </div>

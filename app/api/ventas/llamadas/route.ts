@@ -31,19 +31,18 @@ export async function POST(request: Request) {
   try {
     await requireInternalSession()
     const body = await request.json()
-    const { lead_id, cliente_id, fecha, duracion, link_grabacion, notas, resultado } = body
+    const { lead_id, cliente_id, fecha, link_grabacion, notas, resultado } = body
 
     const result = await query(
       `INSERT INTO llamadas (
         lead_id, cliente_id, fecha, duracion, link_grabacion, notas, resultado
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7)
+      VALUES ($1, $2, $3, NULL, $4, $5, $6)
       RETURNING *`,
       [
         lead_id || null,
         cliente_id || null,
         fecha,
-        duracion || null,
         link_grabacion || null,
         notas || null,
         resultado || null,
