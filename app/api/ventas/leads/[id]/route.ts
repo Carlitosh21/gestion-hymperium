@@ -79,6 +79,15 @@ export async function PATCH(
     // Agregar WHERE clause
     updateValues.push(params.id)
 
+    // Si viene estado, obtener el estado anterior antes de actualizar
+    let previousEstado: string | null = null
+    if (estado) {
+      const currentLead = await query('SELECT estado FROM leads WHERE id = $1', [params.id])
+      if (currentLead.rows.length > 0) {
+        previousEstado = currentLead.rows[0].estado
+      }
+    }
+
     const updateQuery = `
       UPDATE leads 
       SET ${updateFields.join(', ')}
@@ -96,6 +105,20 @@ export async function PATCH(
     }
 
     const lead = result.rows[0]
+
+    // Si se actualizó el estado, registrar evento de transición
+    if (estado && previousEstado !== estado) {
+      try {
+        await query(
+          `INSERT INTO lead_estado_eventos (lead_id, from_estado, to_estado, changed_at)
+           VALUES ($1, $2, $3, CURRENT_TIMESTAMP)`,
+          [params.id, previousEstado, estado]
+        )
+      } catch (error: any) {
+        // Si falla el insert del evento (ej: tabla no existe aún), no bloquear la actualización
+        console.error('Error al registrar evento de estado (no crítico):', error.message)
+      }
+    }
 
     // Si se actualizó el estado y es de conversión, indicar que requiere conversión
     if (estado) {

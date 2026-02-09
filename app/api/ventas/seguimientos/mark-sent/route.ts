@@ -8,33 +8,17 @@ export async function POST(request: Request) {
   try {
     await requireInternalSession()
     const body = await request.json()
-    const { seguimiento_id, lead_id, estado_editado_at_snapshot } = body
+    const { seguimiento_id, lead_id } = body
 
-    if (!seguimiento_id || !lead_id || !estado_editado_at_snapshot) {
+    if (!seguimiento_id || !lead_id) {
       return NextResponse.json(
-        { error: 'seguimiento_id, lead_id y estado_editado_at_snapshot son requeridos' },
+        { error: 'seguimiento_id y lead_id son requeridos' },
         { status: 400 }
       )
     }
 
-    // Validar formato de fecha
-    let fechaSnapshot: Date
-    try {
-      fechaSnapshot = new Date(estado_editado_at_snapshot)
-      if (isNaN(fechaSnapshot.getTime())) {
-        return NextResponse.json(
-          { error: 'Formato de fecha inválido' },
-          { status: 400 }
-        )
-      }
-    } catch (error) {
-      return NextResponse.json(
-        { error: 'Formato de fecha inválido' },
-        { status: 400 }
-      )
-    }
-
-    // Obtener el estado actual del lead para validar
+    // Obtener el estado actual del lead y su estado_editado_at REAL desde la DB
+    // Esto asegura que usamos el timestamp exacto de PostgreSQL, no el del frontend
     const leadResult = await query(
       `SELECT estado, estado_editado_at FROM leads WHERE id = $1`,
       [lead_id]
@@ -48,6 +32,18 @@ export async function POST(request: Request) {
     }
 
     const lead = leadResult.rows[0]
+
+    // Validar que el lead tiene estado_editado_at
+    if (!lead.estado_editado_at) {
+      return NextResponse.json(
+        { error: 'El lead no tiene fecha de última edición' },
+        { status: 400 }
+      )
+    }
+
+    // Usar el estado_editado_at REAL de la DB (ya es un timestamp de PostgreSQL)
+    // No necesitamos convertir, PostgreSQL lo maneja directamente
+    const estadoEditadoAtSnapshot = lead.estado_editado_at
 
     // Insertar registro de envío (el UNIQUE constraint evitará duplicados)
     try {
@@ -64,11 +60,11 @@ export async function POST(request: Request) {
           seguimiento_id,
           lead_id,
           lead.estado,
-          fechaSnapshot.toISOString()
+          estadoEditadoAtSnapshot
         ]
       )
 
-      console.log(`Seguimiento ${seguimiento_id} marcado como enviado para lead ${lead_id}`)
+      console.log(`Seguimiento ${seguimiento_id} marcado como enviado para lead ${lead_id} con snapshot ${estadoEditadoAtSnapshot}`)
       return NextResponse.json({ success: true, envio: result.rows[0] })
     } catch (error: any) {
       console.error('Error al insertar seguimiento_envio:', error)

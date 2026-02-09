@@ -974,21 +974,18 @@ export default function ProspeccionPage() {
 
   const handleMarkSent = async (seguimientoId: number, leadId: number, estadoEditadoAt: string) => {
     try {
-      // Asegurar que estadoEditadoAt sea un string ISO válido
-      const fechaSnapshot = estadoEditadoAt ? new Date(estadoEditadoAt).toISOString() : new Date().toISOString()
-      
+      // El backend ahora usa el estado_editado_at real de la DB, no necesitamos enviar snapshot
       const response = await fetch('/api/ventas/seguimientos/mark-sent', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           seguimiento_id: seguimientoId,
           lead_id: leadId,
-          estado_editado_at_snapshot: fechaSnapshot,
         }),
       })
       
       if (response.ok) {
-        const data = await response.json()
+        // Refrescar inmediatamente la lista de seguimientos pendientes
         await fetchSeguimientosDue()
         // Mostrar mensaje de éxito
         alert('Seguimiento marcado como enviado')
