@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, TrendingUp, MessageSquare, Calendar, Target, Send, Phone, Video, BarChart3 } from 'lucide-react'
+import { ArrowLeft, TrendingUp, MessageSquare, Calendar, Target, Send, Phone, Video, BarChart3, Eye, ThumbsUp, MessageCircle } from 'lucide-react'
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 
 interface StatsData {
@@ -302,10 +302,19 @@ export default function VentasStatsPage() {
                           <span className="text-sm font-bold text-muted w-6">#{idx + 1}</span>
                           <p className="font-medium text-sm line-clamp-1">{video.titulo || 'Sin título'}</p>
                         </div>
-                        <div className="flex items-center gap-4 text-xs text-muted ml-9">
-                          <span>👁️ {formatNumber(video.view_count || 0)}</span>
-                          <span>👍 {formatNumber(video.like_count || 0)}</span>
-                          <span>💬 {formatNumber(video.comment_count || 0)}</span>
+                        <div className="flex flex-wrap items-center gap-4 text-xs text-muted ml-9">
+                          <span className="inline-flex items-center gap-1.5">
+                            <Eye className="w-3.5 h-3.5" />
+                            {formatNumber(video.view_count || 0)}
+                          </span>
+                          <span className="inline-flex items-center gap-1.5">
+                            <ThumbsUp className="w-3.5 h-3.5" />
+                            {formatNumber(video.like_count || 0)}
+                          </span>
+                          <span className="inline-flex items-center gap-1.5">
+                            <MessageCircle className="w-3.5 h-3.5" />
+                            {formatNumber(video.comment_count || 0)}
+                          </span>
                         </div>
                       </div>
                     </div>

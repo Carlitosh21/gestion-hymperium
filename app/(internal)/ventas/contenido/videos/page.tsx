@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { RefreshCw } from 'lucide-react'
+import { RefreshCw, Youtube } from 'lucide-react'
 
 interface Video {
   id: number
@@ -33,8 +33,9 @@ export default function VideosPage() {
   const [syncing, setSyncing] = useState(false)
   const [selectedVideo, setSelectedVideo] = useState<Video | null>(null)
   const [selectedIdeaId, setSelectedIdeaId] = useState<string>('')
-  const [plataformaFilter, setPlataformaFilter] = useState<'youtube' | 'instagram' | 'all'>('youtube')
-  const [tipoFilter, setTipoFilter] = useState<'long_form' | 'short_form' | 'all'>('long_form')
+  // Requerimiento: solo mostrar YouTube Long Form (ocultar Shorts en UI)
+  const [plataformaFilter, setPlataformaFilter] = useState<'youtube'>('youtube')
+  const [tipoFilter] = useState<'long_form'>('long_form')
 
   useEffect(() => {
     fetchVideos()
@@ -104,28 +105,8 @@ export default function VideosPage() {
     }
   }
 
-  // Filtrar videos por plataforma
-  const videosFiltrados = videos.filter((v) => 
-    plataformaFilter === 'all' || v.plataforma === plataformaFilter
-  )
-
-  // Filtrar videos de YouTube por tipo
-  const videosYouTube = videosFiltrados.filter((v) => v.plataforma === 'youtube')
-  const videosLongForm = videosYouTube.filter((v) => v.tipo === 'long_form')
-  const videosShortForm = videosYouTube.filter((v) => v.tipo === 'short_form')
-  const videosInstagram = videosFiltrados.filter((v) => v.plataforma === 'instagram')
-
-  // Videos a mostrar según filtros
-  const videosAMostrar = 
-    plataformaFilter === 'youtube'
-      ? tipoFilter === 'all'
-        ? videosYouTube
-        : tipoFilter === 'long_form'
-        ? videosLongForm
-        : videosShortForm
-      : plataformaFilter === 'instagram'
-      ? videosInstagram
-      : videosFiltrados
+  // Solo YouTube Long Form
+  const videosAMostrar = videos.filter((v) => v.plataforma === 'youtube' && v.tipo === 'long_form')
 
   return (
     <div className="p-8">
@@ -153,83 +134,20 @@ export default function VideosPage() {
 
       {/* Tabs de plataforma */}
       <div className="mb-6">
-        <div className="flex gap-2 border-b border-border mb-4">
-          <button
-            onClick={() => {
-              setPlataformaFilter('youtube')
-              setTipoFilter('long_form') // Reset a long_form cuando cambias de plataforma
-            }}
-            className={`px-4 py-2 font-medium transition-colors ${
-              plataformaFilter === 'youtube'
-                ? 'border-b-2 border-accent text-accent'
-                : 'text-muted hover:text-foreground'
-            }`}
-          >
-            YouTube
-          </button>
-          <button
-            onClick={() => {
-              setPlataformaFilter('instagram')
-              setTipoFilter('all')
-            }}
-            className={`px-4 py-2 font-medium transition-colors ${
-              plataformaFilter === 'instagram'
-                ? 'border-b-2 border-accent text-accent'
-                : 'text-muted hover:text-foreground'
-            }`}
-          >
-            Instagram (próximamente)
-          </button>
-          <button
-            onClick={() => {
-              setPlataformaFilter('all')
-              setTipoFilter('all')
-            }}
-            className={`px-4 py-2 font-medium transition-colors ${
-              plataformaFilter === 'all'
-                ? 'border-b-2 border-accent text-accent'
-                : 'text-muted hover:text-foreground'
-            }`}
-          >
-            Todos
-          </button>
-        </div>
-
-        {/* Sub-tabs para YouTube (Long Form / Short Form) */}
-        {plataformaFilter === 'youtube' && (
-          <div className="flex gap-2 border-b border-border">
-            <button
-              onClick={() => setTipoFilter('long_form')}
-              className={`px-4 py-2 text-sm font-medium transition-colors ${
-                tipoFilter === 'long_form'
-                  ? 'border-b-2 border-accent text-accent'
-                  : 'text-muted hover:text-foreground'
-              }`}
-            >
-              Long Form
-            </button>
-            <button
-              onClick={() => setTipoFilter('short_form')}
-              className={`px-4 py-2 text-sm font-medium transition-colors ${
-                tipoFilter === 'short_form'
-                  ? 'border-b-2 border-accent text-accent'
-                  : 'text-muted hover:text-foreground'
-              }`}
-            >
-              Short Form
-            </button>
-            <button
-              onClick={() => setTipoFilter('all')}
-              className={`px-4 py-2 text-sm font-medium transition-colors ${
-                tipoFilter === 'all'
-                  ? 'border-b-2 border-accent text-accent'
-                  : 'text-muted hover:text-foreground'
-              }`}
-            >
-              Todos
-            </button>
+        <div className="bg-surface rounded-xl p-4 border border-border flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="bg-red-500/10 text-red-500 p-2 rounded-lg">
+              <Youtube className="w-5 h-5" />
+            </div>
+            <div>
+              <p className="font-semibold">YouTube</p>
+              <p className="text-xs text-muted">Mostrando solo Long Form</p>
+            </div>
           </div>
-        )}
+          <span className="text-xs px-2.5 py-1 bg-accent/20 text-accent rounded-full font-medium">
+            Long Form
+          </span>
+        </div>
       </div>
 
       {selectedVideo && (
@@ -286,15 +204,7 @@ export default function VideosPage() {
           <div className="text-center py-12 text-muted">Cargando...</div>
         ) : videosAMostrar.length === 0 ? (
           <div className="bg-surface rounded-xl p-6 border border-border text-center text-muted">
-            {plataformaFilter === 'youtube'
-              ? tipoFilter === 'long_form'
-                ? 'No hay videos de formato largo'
-                : tipoFilter === 'short_form'
-                ? 'No hay videos de formato corto'
-                : 'No hay videos de YouTube'
-              : plataformaFilter === 'instagram'
-              ? 'No hay videos de Instagram aún. Próximamente.'
-              : 'No hay videos'}
+            No hay videos de YouTube Long Form
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
