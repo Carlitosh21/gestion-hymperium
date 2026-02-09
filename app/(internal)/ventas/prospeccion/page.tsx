@@ -20,7 +20,7 @@ import {
   useSortable,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { GripVertical, Pencil } from 'lucide-react'
+import { GripVertical, Pencil, Plus, Copy, ExternalLink, Check, Edit2, Trash2 } from 'lucide-react'
 
 interface Lead {
   id: number
@@ -50,6 +50,30 @@ const ESTADOS_PIPELINE = [
 
 const ESTADOS_CONVERSION = ['seña', 'downsell', 'cerrado']
 const ESTADOS_REQUIEREN_LLAMADA = ['llamada_agendada', 'llamada_reagendada']
+
+interface Seguimiento {
+  id: number
+  nombre: string
+  mensaje: string
+  delay_horas: number
+  activo: boolean
+  estados: Array<{ estado: string }>
+}
+
+interface SeguimientoDue {
+  id: number
+  nombre: string
+  mensaje: string
+  delay_horas: number
+  leads: Array<{
+    id: number
+    nombre: string
+    usuario_ig: string | null
+    estado: string
+    estado_editado_at: string
+    horas_desde_edicion: number
+  }>
+}
 
 interface LeadEditModalProps {
   lead: Lead | null
@@ -433,6 +457,181 @@ function LeadCard({ lead, onEdit }: { lead: Lead; onEdit: (lead: Lead) => void }
   )
 }
 
+interface SeguimientoModalProps {
+  seguimiento: Seguimiento | null
+  onClose: () => void
+  onSave: (data: { nombre: string; mensaje: string; delay_horas: number; activo: boolean; estados: string[] }) => Promise<void>
+}
+
+function SeguimientoModal({ seguimiento, onClose, onSave }: SeguimientoModalProps) {
+  const [nombre, setNombre] = useState('')
+  const [mensaje, setMensaje] = useState('')
+  const [delayHoras, setDelayHoras] = useState(24)
+  const [activo, setActivo] = useState(true)
+  const [estadosSeleccionados, setEstadosSeleccionados] = useState<string[]>([])
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (seguimiento) {
+      setNombre(seguimiento.nombre)
+      setMensaje(seguimiento.mensaje)
+      setDelayHoras(seguimiento.delay_horas)
+      setActivo(seguimiento.activo)
+      setEstadosSeleccionados(seguimiento.estados.map(e => e.estado))
+    } else {
+      setNombre('')
+      setMensaje('')
+      setDelayHoras(24)
+      setActivo(true)
+      setEstadosSeleccionados([])
+    }
+  }, [seguimiento])
+
+  const toggleEstado = (estadoId: string) => {
+    setEstadosSeleccionados(prev =>
+      prev.includes(estadoId)
+        ? prev.filter(e => e !== estadoId)
+        : [...prev, estadoId]
+    )
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!nombre.trim() || !mensaje.trim() || estadosSeleccionados.length === 0) {
+      setError('Todos los campos son requeridos y debes seleccionar al menos un estado')
+      return
+    }
+
+    if (delayHoras <= 0) {
+      setError('El delay en horas debe ser mayor a 0')
+      return
+    }
+
+    setError(null)
+    setSubmitting(true)
+
+    try {
+      await onSave({
+        nombre: nombre.trim(),
+        mensaje: mensaje.trim(),
+        delay_horas: delayHoras,
+        activo,
+        estados: estadosSeleccionados,
+      })
+      onClose()
+    } catch (err: any) {
+      setError(err.message || 'Error al guardar seguimiento')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-surface rounded-xl p-6 border border-border max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+        <h2 className="text-xl font-semibold mb-4">
+          {seguimiento ? 'Editar Seguimiento' : 'Nuevo Seguimiento'}
+        </h2>
+
+        {error && (
+          <div className="mb-4 p-3 bg-red-50 text-red-800 rounded-lg border border-red-200 text-sm">
+            {error}
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium mb-2">Nombre *</label>
+            <input
+              type="text"
+              required
+              value={nombre}
+              onChange={(e) => setNombre(e.target.value)}
+              className="w-full px-4 py-2 border border-border rounded-lg bg-background"
+              placeholder="ej: Recordatorio 24h Mensaje Conexión"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-2">Mensaje *</label>
+            <textarea
+              required
+              value={mensaje}
+              onChange={(e) => setMensaje(e.target.value)}
+              rows={4}
+              className="w-full px-4 py-2 border border-border rounded-lg bg-background"
+              placeholder="Hola, pudiste ver mi mensaje?"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-2">Delay (horas) *</label>
+            <input
+              type="number"
+              required
+              min="1"
+              value={delayHoras}
+              onChange={(e) => setDelayHoras(parseInt(e.target.value) || 24)}
+              className="w-full px-4 py-2 border border-border rounded-lg bg-background"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-2">Estados del Pipeline *</label>
+            <div className="grid grid-cols-2 gap-2 mt-2 max-h-48 overflow-y-auto p-2 border border-border rounded-lg bg-background">
+              {ESTADOS_PIPELINE.map((estado) => (
+                <label key={estado.id} className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={estadosSeleccionados.includes(estado.id)}
+                    onChange={() => toggleEstado(estado.id)}
+                    className="w-4 h-4"
+                  />
+                  <span className="text-sm">{estado.label}</span>
+                </label>
+              ))}
+            </div>
+            <p className="text-xs text-muted mt-1">
+              Seleccionados: {estadosSeleccionados.length}
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              id="activo"
+              checked={activo}
+              onChange={(e) => setActivo(e.target.checked)}
+              className="w-4 h-4"
+            />
+            <label htmlFor="activo" className="text-sm font-medium cursor-pointer">
+              Activo
+            </label>
+          </div>
+
+          <div className="flex gap-3">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 px-4 py-2 border border-border rounded-lg hover:bg-surface-elevated transition-colors"
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              disabled={submitting}
+              className="flex-1 px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent-hover disabled:opacity-50 transition-colors"
+            >
+              {submitting ? 'Guardando...' : 'Guardar'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
+
 function Column({ estado, leads, onEditLead }: { estado: { id: string; label: string; color: string }; leads: Lead[]; onEditLead: (lead: Lead) => void }) {
   const { setNodeRef, isOver } = useDroppable({ id: estado.id })
 
@@ -463,6 +662,7 @@ function Column({ estado, leads, onEditLead }: { estado: { id: string; label: st
 }
 
 export default function ProspeccionPage() {
+  const [vistaActiva, setVistaActiva] = useState<'pipeline' | 'seguimientos'>('pipeline')
   const [leads, setLeads] = useState<Lead[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
@@ -476,6 +676,13 @@ export default function ProspeccionPage() {
     newEstado: string
   } | null>(null)
   const [editLead, setEditLead] = useState<Lead | null>(null)
+  
+  // Estados para seguimientos
+  const [seguimientos, setSeguimientos] = useState<Seguimiento[]>([])
+  const [seguimientosDue, setSeguimientosDue] = useState<SeguimientoDue[]>([])
+  const [loadingSeguimientos, setLoadingSeguimientos] = useState(false)
+  const [seguimientoModal, setSeguimientoModal] = useState<Seguimiento | null>(null)
+  const [showSeguimientoModal, setShowSeguimientoModal] = useState(false)
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -486,7 +693,11 @@ export default function ProspeccionPage() {
 
   useEffect(() => {
     fetchLeads()
-  }, [])
+    if (vistaActiva === 'seguimientos') {
+      fetchSeguimientos()
+      fetchSeguimientosDue()
+    }
+  }, [vistaActiva])
 
   const fetchLeads = async () => {
     try {
@@ -681,6 +892,97 @@ export default function ProspeccionPage() {
     fetchLeads()
   }
 
+  // Funciones para seguimientos
+  const fetchSeguimientos = async () => {
+    setLoadingSeguimientos(true)
+    try {
+      const response = await fetch('/api/ventas/seguimientos')
+      const data = await response.json()
+      setSeguimientos(data)
+    } catch (error) {
+      console.error('Error al cargar seguimientos:', error)
+    } finally {
+      setLoadingSeguimientos(false)
+    }
+  }
+
+  const fetchSeguimientosDue = async () => {
+    try {
+      const response = await fetch('/api/ventas/seguimientos/due')
+      const data = await response.json()
+      setSeguimientosDue(data)
+    } catch (error) {
+      console.error('Error al cargar seguimientos pendientes:', error)
+    }
+  }
+
+  const handleSaveSeguimiento = async (data: { nombre: string; mensaje: string; delay_horas: number; activo: boolean; estados: string[] }) => {
+    if (seguimientoModal !== null) {
+      // Editar
+      const response = await fetch(`/api/ventas/seguimientos/${seguimientoModal.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      })
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Error al actualizar seguimiento')
+      }
+    } else {
+      // Crear
+      const response = await fetch('/api/ventas/seguimientos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      })
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Error al crear seguimiento')
+      }
+    }
+    setShowSeguimientoModal(false)
+    setSeguimientoModal(null)
+    await fetchSeguimientos()
+    await fetchSeguimientosDue()
+  }
+
+  const handleDeleteSeguimiento = async (id: number) => {
+    if (!confirm('¿Estás seguro de eliminar este seguimiento?')) return
+    
+    const response = await fetch(`/api/ventas/seguimientos/${id}`, {
+      method: 'DELETE',
+    })
+    if (response.ok) {
+      await fetchSeguimientos()
+      await fetchSeguimientosDue()
+    }
+  }
+
+  const handleMarkSent = async (seguimientoId: number, leadId: number, estadoEditadoAt: string) => {
+    const response = await fetch('/api/ventas/seguimientos/mark-sent', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        seguimiento_id: seguimientoId,
+        lead_id: leadId,
+        estado_editado_at_snapshot: estadoEditadoAt,
+      }),
+    })
+    if (response.ok) {
+      await fetchSeguimientosDue()
+    }
+  }
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text)
+    alert('Mensaje copiado al portapapeles')
+  }
+
+  const openInstagram = (usuarioIg: string | null) => {
+    if (!usuarioIg) return
+    window.open(`https://instagram.com/${usuarioIg}`, '_blank')
+  }
+
   const leadsByEstado = ESTADOS_PIPELINE.reduce((acc, estado) => {
     acc[estado.id] = leads.filter(l => l.estado === estado.id)
     return acc
@@ -688,18 +990,48 @@ export default function ProspeccionPage() {
 
   return (
     <div className="p-8">
-      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-8">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
         <div>
           <h1 className="text-4xl font-semibold mb-2">Pipeline de Leads</h1>
           <p className="text-muted text-lg">Gestión de prospección y procedimientos estandarizados</p>
         </div>
+        {vistaActiva === 'pipeline' && (
+          <button
+            onClick={() => setShowForm(!showForm)}
+            className="px-6 py-2.5 bg-accent text-white rounded-lg font-medium hover:bg-accent-hover transition-colors shadow-lg hover:shadow-xl whitespace-nowrap"
+          >
+            {showForm ? 'Cancelar' : '+ Nuevo Lead'}
+          </button>
+        )}
+      </div>
+
+      {/* Tabs Pipeline / Seguimientos */}
+      <div className="mb-6 flex gap-2 border-b border-border">
         <button
-          onClick={() => setShowForm(!showForm)}
-          className="px-6 py-2.5 bg-accent text-white rounded-lg font-medium hover:bg-accent-hover transition-colors shadow-lg hover:shadow-xl whitespace-nowrap"
+          onClick={() => setVistaActiva('pipeline')}
+          className={`px-4 py-2 font-medium transition-colors ${
+            vistaActiva === 'pipeline'
+              ? 'border-b-2 border-accent text-accent'
+              : 'text-muted hover:text-foreground'
+          }`}
         >
-          {showForm ? 'Cancelar' : '+ Nuevo Lead'}
+          Pipeline
+        </button>
+        <button
+          onClick={() => setVistaActiva('seguimientos')}
+          className={`px-4 py-2 font-medium transition-colors ${
+            vistaActiva === 'seguimientos'
+              ? 'border-b-2 border-accent text-accent'
+              : 'text-muted hover:text-foreground'
+          }`}
+        >
+          Seguimientos
         </button>
       </div>
+
+      {/* Vista Pipeline */}
+      {vistaActiva === 'pipeline' && (
+        <>
 
       {showForm && (
         <div className="mb-8 bg-surface rounded-xl p-6 border border-border">
@@ -790,6 +1122,154 @@ export default function ProspeccionPage() {
           lead={editLead}
           onClose={() => setEditLead(null)}
           onSave={handleEditLead}
+        />
+      )}
+        </>
+      )}
+
+      {/* Vista Seguimientos */}
+      {vistaActiva === 'seguimientos' && (
+        <div className="space-y-8">
+          {/* Listado de seguimientos configurados */}
+          <section>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-2xl font-semibold">Seguimientos Configurados</h2>
+              <button
+                onClick={() => {
+                  setSeguimientoModal(null)
+                  setShowSeguimientoModal(true)
+                }}
+                className="flex items-center gap-2 px-4 py-2 bg-accent text-white rounded-lg font-medium hover:bg-accent-hover transition-colors"
+              >
+                <Plus className="w-4 h-4" />
+                Nuevo Seguimiento
+              </button>
+            </div>
+
+            {loadingSeguimientos ? (
+              <div className="text-center py-12 text-muted">Cargando...</div>
+            ) : seguimientos.length === 0 ? (
+              <div className="bg-surface rounded-xl p-6 border border-border text-center text-muted">
+                No hay seguimientos configurados. Crea uno para empezar.
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {seguimientos.map((seguimiento) => (
+                  <div
+                    key={seguimiento.id}
+                    className="bg-surface rounded-xl p-4 border border-border"
+                  >
+                    <div className="flex items-start justify-between mb-2">
+                      <h3 className="font-semibold">{seguimiento.nombre}</h3>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => {
+                            setSeguimientoModal(seguimiento)
+                            setShowSeguimientoModal(true)
+                          }}
+                          className="p-1.5 hover:bg-surface-elevated rounded transition-colors"
+                          title="Editar"
+                        >
+                          <Edit2 className="w-4 h-4 text-muted" />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteSeguimiento(seguimiento.id)}
+                          className="p-1.5 hover:bg-surface-elevated rounded transition-colors"
+                          title="Eliminar"
+                        >
+                          <Trash2 className="w-4 h-4 text-red-500" />
+                        </button>
+                      </div>
+                    </div>
+                    <p className="text-sm text-muted mb-2">{seguimiento.mensaje}</p>
+                    <div className="flex items-center gap-4 text-xs text-muted">
+                      <span>Delay: {seguimiento.delay_horas}h</span>
+                      <span className={`px-2 py-1 rounded ${seguimiento.activo ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
+                        {seguimiento.activo ? 'Activo' : 'Inactivo'}
+                      </span>
+                    </div>
+                    <div className="mt-2 text-xs text-muted">
+                      Estados: {seguimiento.estados.map(e => ESTADOS_PIPELINE.find(s => s.id === e.estado)?.label || e.estado).join(', ')}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+
+          {/* Panel de Pendientes */}
+          <section>
+            <h2 className="text-2xl font-semibold mb-4">Pendientes</h2>
+            {seguimientosDue.length === 0 ? (
+              <div className="bg-surface rounded-xl p-6 border border-border text-center text-muted">
+                No hay seguimientos pendientes en este momento.
+              </div>
+            ) : (
+              <div className="space-y-6">
+                {seguimientosDue.map((seguimientoDue) => (
+                  <div key={seguimientoDue.id} className="bg-surface rounded-xl p-6 border border-border">
+                    <h3 className="text-lg font-semibold mb-2">{seguimientoDue.nombre}</h3>
+                    <p className="text-sm text-muted mb-4">{seguimientoDue.mensaje}</p>
+                    <div className="space-y-3">
+                      {seguimientoDue.leads.map((lead) => {
+                        const estadoLabel = ESTADOS_PIPELINE.find(e => e.id === lead.estado)?.label || lead.estado
+                        return (
+                          <div
+                            key={lead.id}
+                            className="flex items-center justify-between p-3 bg-background rounded-lg border border-border"
+                          >
+                            <div className="flex-1">
+                              <div className="font-medium">
+                                @{lead.usuario_ig || lead.nombre}
+                              </div>
+                              <div className="text-sm text-muted">
+                                Estado: {estadoLabel} • Hace {lead.horas_desde_edicion}h
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={() => copyToClipboard(seguimientoDue.mensaje)}
+                                className="p-2 hover:bg-surface-elevated rounded transition-colors"
+                                title="Copiar mensaje"
+                              >
+                                <Copy className="w-4 h-4 text-muted" />
+                              </button>
+                              <button
+                                onClick={() => openInstagram(lead.usuario_ig)}
+                                className="p-2 hover:bg-surface-elevated rounded transition-colors"
+                                title="Abrir Instagram"
+                              >
+                                <ExternalLink className="w-4 h-4 text-muted" />
+                              </button>
+                              <button
+                                onClick={() => handleMarkSent(seguimientoDue.id, lead.id, lead.estado_editado_at)}
+                                className="flex items-center gap-1 px-3 py-1.5 bg-green-500 text-white rounded hover:bg-green-600 transition-colors text-sm"
+                              >
+                                <Check className="w-4 h-4" />
+                                Enviado
+                              </button>
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+        </div>
+      )}
+
+      {/* Modal de Seguimiento */}
+      {showSeguimientoModal && (
+        <SeguimientoModal
+          seguimiento={seguimientoModal}
+          onClose={() => {
+            setShowSeguimientoModal(false)
+            setSeguimientoModal(null)
+          }}
+          onSave={handleSaveSeguimiento}
         />
       )}
     </div>
