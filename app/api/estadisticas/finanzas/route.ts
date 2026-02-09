@@ -56,6 +56,27 @@ export async function GET(request: Request) {
     )
     const totalIngresosHymperium = parseFloat(ingresosHymperiumResult.rows[0]?.total || '0')
 
+    const pagosDevsResult = await query(
+      `SELECT COALESCE(SUM(pago_desarrollador), 0) as total FROM ingresos
+       WHERE fecha >= $1 AND fecha <= $2`,
+      [startDate, endDate]
+    )
+    const totalPagosDevs = parseFloat(pagosDevsResult.rows[0]?.total || '0')
+
+    const ingresosCarlitosResult = await query(
+      `SELECT COALESCE(SUM((monto - COALESCE(pago_desarrollador, 0)) * (COALESCE(porcentaje_carlitos, 0) / 100)), 0) as total
+       FROM ingresos WHERE fecha >= $1 AND fecha <= $2`,
+      [startDate, endDate]
+    )
+    const totalIngresosCarlitos = parseFloat(ingresosCarlitosResult.rows[0]?.total || '0')
+
+    const ingresosJoacoResult = await query(
+      `SELECT COALESCE(SUM((monto - COALESCE(pago_desarrollador, 0)) * (COALESCE(porcentaje_joaco, 0) / 100)), 0) as total
+       FROM ingresos WHERE fecha >= $1 AND fecha <= $2`,
+      [startDate, endDate]
+    )
+    const totalIngresosJoaco = parseFloat(ingresosJoacoResult.rows[0]?.total || '0')
+
     const egresosResult = await query(
       `SELECT COALESCE(SUM(monto), 0) as total FROM egresos
        WHERE fecha >= $1 AND fecha <= $2`,
@@ -67,16 +88,22 @@ export async function GET(request: Request) {
     const margenHymperium = totalIngresosBrutos > 0 ? (totalIngresosHymperium / totalIngresosBrutos) * 100 : 0
     const tasaEgreso = totalIngresosHymperium > 0 ? (totalEgresos / totalIngresosHymperium) * 100 : 0
 
-    // Timeseries: Ingresos por día
+    // Timeseries: Ingresos por día (bruto, hymperium, carlitos, joaco, pagos_devs)
     const tsIngresosResult = await query(
       `SELECT d.dia::date as dia,
          COALESCE(i.bruto, 0) as bruto,
-         COALESCE(i.hymperium, 0) as hymperium
+         COALESCE(i.hymperium, 0) as hymperium,
+         COALESCE(i.carlitos, 0) as carlitos,
+         COALESCE(i.joaco, 0) as joaco,
+         COALESCE(i.pagos_devs, 0) as pagos_devs
        FROM generate_series($1::timestamp, $2::timestamp, '1 day'::interval) AS d(dia)
        LEFT JOIN (
          SELECT DATE(fecha) as dia,
            SUM(monto) as bruto,
-           SUM((monto - COALESCE(pago_desarrollador, 0)) * (COALESCE(porcentaje_hymperium, 0) / 100)) as hymperium
+           SUM((monto - COALESCE(pago_desarrollador, 0)) * (COALESCE(porcentaje_hymperium, 0) / 100)) as hymperium,
+           SUM((monto - COALESCE(pago_desarrollador, 0)) * (COALESCE(porcentaje_carlitos, 0) / 100)) as carlitos,
+           SUM((monto - COALESCE(pago_desarrollador, 0)) * (COALESCE(porcentaje_joaco, 0) / 100)) as joaco,
+           SUM(pago_desarrollador) as pagos_devs
          FROM ingresos
          WHERE fecha >= $1 AND fecha <= $2
          GROUP BY DATE(fecha)
@@ -89,6 +116,9 @@ export async function GET(request: Request) {
       dia: new Date(row.dia).toLocaleDateString('es-AR', { day: 'numeric', month: 'short' }),
       bruto: parseFloat(row.bruto || '0'),
       hymperium: parseFloat(row.hymperium || '0'),
+      carlitos: parseFloat(row.carlitos || '0'),
+      joaco: parseFloat(row.joaco || '0'),
+      pagos_devs: parseFloat(row.pagos_devs || '0'),
     }))
 
     // Timeseries: Egresos por día
@@ -228,6 +258,9 @@ export async function GET(request: Request) {
       kpis: {
         totalIngresosBrutos: totalIngresosBrutos,
         totalIngresosHymperium: totalIngresosHymperium,
+        totalIngresosCarlitos: totalIngresosCarlitos,
+        totalIngresosJoaco: totalIngresosJoaco,
+        totalPagosDevs: totalPagosDevs,
         totalEgresos: totalEgresos,
         balance,
         margenHymperium,

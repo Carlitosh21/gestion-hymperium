@@ -33,12 +33,22 @@ interface StatsData {
   kpis: {
     totalIngresosBrutos: number
     totalIngresosHymperium: number
+    totalIngresosCarlitos: number
+    totalIngresosJoaco: number
+    totalPagosDevs: number
     totalEgresos: number
     balance: number
     margenHymperium: number
     tasaEgreso: number
   }
-  timeseriesIngresos: Array<{ dia: string; bruto: number; hymperium: number }>
+  timeseriesIngresos: Array<{
+    dia: string
+    bruto: number
+    hymperium: number
+    carlitos: number
+    joaco: number
+    pagos_devs: number
+  }>
   timeseriesEgresos: Array<{ dia: string; monto: number }>
   flujoCaja: Array<{ dia: string; ingresos: number; egresos: number }>
   egresosPorCategoria: Array<{ categoria: string; total: number; porcentaje: number }>
@@ -226,6 +236,41 @@ export default function FinanzasStatsPage() {
             </div>
           </section>
 
+          {/* Desglose: Ingresos míos, Carlitos, Joaco, Pagos Devs */}
+          <section className="mb-12">
+            <div className="flex items-center gap-3 mb-6">
+              <DollarSign className="w-6 h-6 text-indigo-500" />
+              <h2 className="text-2xl font-semibold">Desglose de Ingresos</h2>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              <div className="bg-surface rounded-xl p-6 border border-border">
+                <p className="text-sm text-muted">Ingresos Carlitos</p>
+                <p className="text-2xl font-bold text-indigo-500">
+                  {formatCurrency(stats.kpis.totalIngresosCarlitos ?? 0)}
+                </p>
+              </div>
+              <div className="bg-surface rounded-xl p-6 border border-border">
+                <p className="text-sm text-muted">Ingresos Joaco</p>
+                <p className="text-2xl font-bold text-violet-500">
+                  {formatCurrency(stats.kpis.totalIngresosJoaco ?? 0)}
+                </p>
+              </div>
+              <div className="bg-surface rounded-xl p-6 border border-border">
+                <p className="text-sm text-muted">Pagos a Desarrolladores</p>
+                <p className="text-2xl font-bold text-amber-500">
+                  {formatCurrency(stats.kpis.totalPagosDevs ?? 0)}
+                </p>
+              </div>
+              <div className="bg-surface rounded-xl p-6 border border-border">
+                <p className="text-sm text-muted">Ingresos Míos (Carlitos + Joaco)</p>
+                <p className="text-2xl font-bold text-cyan-500">
+                  {formatCurrency((stats.kpis.totalIngresosCarlitos ?? 0) + (stats.kpis.totalIngresosJoaco ?? 0))}
+                </p>
+              </div>
+            </div>
+          </section>
+
           {/* Flujo de caja */}
           <section className="mb-12">
             <div className="flex items-center gap-3 mb-6">
@@ -238,15 +283,11 @@ export default function FinanzasStatsPage() {
               {stats.flujoCaja.some((d) => d.ingresos > 0 || d.egresos > 0) ? (
                 <ResponsiveContainer width="100%" height={300}>
                   <LineChart data={stats.flujoCaja}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                    <XAxis
-                      dataKey="dia"
-                      stroke="hsl(var(--muted-foreground))"
-                      tick={{ fill: 'hsl(var(--muted-foreground))' }}
-                    />
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.3)" />
+                    <XAxis dataKey="dia" stroke="#ffffff" tick={{ fill: '#ffffff' }} />
                     <YAxis
-                      stroke="hsl(var(--muted-foreground))"
-                      tick={{ fill: 'hsl(var(--muted-foreground))' }}
+                      stroke="#ffffff"
+                      tick={{ fill: '#ffffff' }}
                       tickFormatter={(v) => formatCurrency(v)}
                       domain={[0, 'auto']}
                     />
@@ -258,7 +299,7 @@ export default function FinanzasStatsPage() {
                       }}
                       formatter={(value: number | undefined, name: string | undefined) => [formatCurrency(value ?? 0), name ?? '']}
                     />
-                    <Legend />
+                    <Legend wrapperStyle={{ color: '#ffffff' }} />
                     <Line
                       type="monotone"
                       dataKey="ingresos"
@@ -293,19 +334,15 @@ export default function FinanzasStatsPage() {
             </div>
 
             <div className="bg-surface rounded-xl p-6 border border-border">
-              <h3 className="text-lg font-semibold mb-4">Bruto vs Hymperium por Día</h3>
+              <h3 className="text-lg font-semibold mb-4">Desglose por Día (Bruto, Hymperium, Carlitos, Joaco, Pagos Devs)</h3>
               {stats.timeseriesIngresos.some((d) => d.bruto > 0 || d.hymperium > 0) ? (
                 <ResponsiveContainer width="100%" height={300}>
                   <BarChart data={stats.timeseriesIngresos}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                    <XAxis
-                      dataKey="dia"
-                      stroke="hsl(var(--muted-foreground))"
-                      tick={{ fill: 'hsl(var(--muted-foreground))' }}
-                    />
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.3)" />
+                    <XAxis dataKey="dia" stroke="#ffffff" tick={{ fill: '#ffffff' }} />
                     <YAxis
-                      stroke="hsl(var(--muted-foreground))"
-                      tick={{ fill: 'hsl(var(--muted-foreground))' }}
+                      stroke="#ffffff"
+                      tick={{ fill: '#ffffff' }}
                       tickFormatter={(v) => formatCurrency(v)}
                       domain={[0, 'auto']}
                     />
@@ -317,12 +354,20 @@ export default function FinanzasStatsPage() {
                       }}
                       formatter={(value: number | undefined, name: string | undefined) => [formatCurrency(value ?? 0), name ?? '']}
                     />
-                    <Legend />
+                    <Legend wrapperStyle={{ color: '#ffffff' }} />
                     <Bar dataKey="bruto" fill="#3b82f6" name="Ingresos Brutos" radius={[4, 4, 0, 0]} />
                     <Bar
                       dataKey="hymperium"
                       fill="#22c55e"
                       name="Ingresos Hymperium"
+                      radius={[4, 4, 0, 0]}
+                    />
+                    <Bar dataKey="carlitos" fill="#8b5cf6" name="Carlitos" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="joaco" fill="#ec4899" name="Joaco" radius={[4, 4, 0, 0]} />
+                    <Bar
+                      dataKey="pagos_devs"
+                      fill="#f59e0b"
+                      name="Pagos a Devs"
                       radius={[4, 4, 0, 0]}
                     />
                   </BarChart>
@@ -340,7 +385,7 @@ export default function FinanzasStatsPage() {
             <section>
               <div className="flex items-center gap-3 mb-6">
                 <TrendingDown className="w-6 h-6 text-red-500" />
-                <h2 className="text-2xl font-semibold">Egresos por Categoría</h2>
+                <h2 className="text-2xl font-semibold">Pagos según Categoría</h2>
               </div>
 
               <div className="bg-surface rounded-xl p-6 border border-border">
@@ -356,7 +401,7 @@ export default function FinanzasStatsPage() {
                             cx="50%"
                             cy="50%"
                             outerRadius={80}
-                            label={({ name }) => name}
+                            label={{ fill: '#ffffff' }}
                           >
                             {stats.egresosPorCategoria.map((_, index) => (
                               <Cell key={index} fill={COLORS[index % COLORS.length]} />
