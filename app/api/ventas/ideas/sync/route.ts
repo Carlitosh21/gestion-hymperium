@@ -29,6 +29,7 @@ export async function POST() {
     }
 
     const data = await response.json()
+    console.log('Datos recibidos de n8n:', JSON.stringify(data, null, 2))
     
     // Normalizar el JSON: el formato es un array donde cada elemento tiene "Ideas" que es un array
     let ideasData: any[] = []
@@ -46,6 +47,8 @@ export async function POST() {
     } else if (data.Ideas && Array.isArray(data.Ideas)) {
       ideasData = data.Ideas
     }
+    
+    console.log(`Total de ideas normalizadas: ${ideasData.length}`)
 
     let inserted = 0
     let updated = 0
@@ -70,9 +73,12 @@ export async function POST() {
           }
         }
 
-        const titulo = ideaParsed.titulo_video || item.titulo_video || 'Sin título'
-        const descripcionEstrategica = ideaParsed.descripcion_estrategica || item.descripcion_estrategica || null
+        // Mapear campos: n8n usa idea_titulo y descripcion_detallada
+        const titulo = ideaParsed.idea_titulo || ideaParsed.titulo_video || item.titulo_video || item.idea_titulo || 'Sin título'
+        const descripcionEstrategica = ideaParsed.descripcion_detallada || ideaParsed.descripcion_estrategica || item.descripcion_estrategica || item.descripcion_detallada || null
         const guionLongformUrl = `https://docs.google.com/document/d/${documentId}/edit`
+        
+        console.log(`Procesando idea: documentId=${documentId}, titulo=${titulo.substring(0, 50)}...`)
 
         // Guardar el payload original de n8n para referencia
         const n8nPayload = JSON.stringify(item)
