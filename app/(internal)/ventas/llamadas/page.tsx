@@ -1,7 +1,9 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Pencil } from 'lucide-react'
+import { Pencil, Trash2 } from 'lucide-react'
+
+const RESULTADO_OPTIONS = ['No-Show', 'Canceló', 'Reagendó', 'Show-up', 'Otro'] as const
 
 interface Llamada {
   id: number
@@ -351,6 +353,23 @@ export default function LlamadasPage() {
     }
   }
 
+  const handleDeleteLlamada = async (llamada: Llamada) => {
+    if (!confirm('¿Borrar esta llamada? Esta acción no se puede deshacer.')) return
+    try {
+      const response = await fetch(`/api/ventas/llamadas/${llamada.id}`, { method: 'DELETE' })
+      if (response.ok) {
+        setEditingLlamada(null)
+        fetchLlamadas()
+      } else {
+        const err = await response.json()
+        alert(err.error || 'Error al borrar')
+      }
+    } catch (error) {
+      console.error('Error al borrar llamada:', error)
+      alert('Error al borrar llamada')
+    }
+  }
+
   return (
     <div className="p-8">
       <div className="flex justify-between items-center mb-8">
@@ -527,6 +546,16 @@ export default function LlamadasPage() {
                   >
                     <Pencil className="w-4 h-4 text-muted" />
                   </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      handleDeleteLlamada(llamada)
+                    }}
+                    className="p-2 hover:bg-red-500/20 rounded transition-colors text-red-500"
+                    title="Borrar llamada"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
                   {llamada.link_grabacion && (
                     <a
                       href={llamada.link_grabacion}
@@ -569,6 +598,7 @@ export default function LlamadasPage() {
           llamada={editingLlamada}
           onClose={() => setEditingLlamada(null)}
           onSave={handleSaveEdit}
+          onDelete={() => handleDeleteLlamada(editingLlamada)}
         />
       )}
     </div>
@@ -579,13 +609,15 @@ interface LlamadaEditModalProps {
   llamada: Llamada
   onClose: () => void
   onSave: (data: { fecha: string; link_grabacion: string; notas: string; resultado: string }) => Promise<void>
+  onDelete: () => void
 }
 
-function LlamadaEditModal({ llamada, onClose, onSave }: LlamadaEditModalProps) {
+function LlamadaEditModal({ llamada, onClose, onSave, onDelete }: LlamadaEditModalProps) {
   const [fecha, setFecha] = useState('')
   const [linkGrabacion, setLinkGrabacion] = useState('')
   const [notas, setNotas] = useState('')
-  const [resultado, setResultado] = useState('')
+  const [resultadoSelect, setResultadoSelect] = useState<string>('')
+  const [resultadoOtro, setResultadoOtro] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -595,8 +627,13 @@ function LlamadaEditModal({ llamada, onClose, onSave }: LlamadaEditModalProps) {
     setFecha(fechaLocal.toISOString().slice(0, 16))
     setLinkGrabacion(llamada.link_grabacion || '')
     setNotas(llamada.notas || '')
-    setResultado(llamada.resultado || '')
+    const r = llamada.resultado || ''
+    const isPredef = RESULTADO_OPTIONS.slice(0, -1).includes(r as any)
+    setResultadoSelect(isPredef ? r : 'Otro')
+    setResultadoOtro(isPredef ? '' : r)
   }, [llamada])
+
+  const resultadoFinal = resultadoSelect === 'Otro' ? resultadoOtro : resultadoSelect
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -613,7 +650,7 @@ function LlamadaEditModal({ llamada, onClose, onSave }: LlamadaEditModalProps) {
         fecha,
         link_grabacion: linkGrabacion,
         notas,
-        resultado,
+        resultado: resultadoFinal || '',
       })
     } catch (err: any) {
       setError(err.message || 'Error al guardar llamada')
@@ -656,13 +693,24 @@ function LlamadaEditModal({ llamada, onClose, onSave }: LlamadaEditModalProps) {
           </div>
           <div>
             <label className="block text-sm font-medium mb-2">Resultado</label>
-            <input
-              type="text"
-              value={resultado}
-              onChange={(e) => setResultado(e.target.value)}
+            <select
+              value={resultadoSelect}
+              onChange={(e) => setResultadoSelect(e.target.value)}
               className="w-full px-4 py-2 border border-border rounded-lg bg-background"
-              placeholder="Ej: Cliente interesado, necesita más info, etc."
-            />
+            >
+              {RESULTADO_OPTIONS.map((opt) => (
+                <option key={opt} value={opt}>{opt}</option>
+              ))}
+            </select>
+            {resultadoSelect === 'Otro' && (
+              <input
+                type="text"
+                value={resultadoOtro}
+                onChange={(e) => setResultadoOtro(e.target.value)}
+                className="w-full px-4 py-2 border border-border rounded-lg bg-background mt-2"
+                placeholder="Descripción..."
+              />
+            )}
           </div>
           <div>
             <label className="block text-sm font-medium mb-2">Notas</label>
@@ -690,6 +738,15 @@ function LlamadaEditModal({ llamada, onClose, onSave }: LlamadaEditModalProps) {
               {submitting ? 'Guardando...' : 'Guardar'}
             </button>
           </div>
+          <button
+            type="button"
+            onClick={() => {
+              if (confirm('¿Borrar esta llamada? Esta acción no se puede deshacer.')) onDelete()
+            }}
+            className="w-full px-4 py-2 border border-red-500 text-red-500 rounded-lg hover:bg-red-500/10 transition-colors"
+          >
+            Borrar llamada
+          </button>
         </form>
       </div>
     </div>

@@ -170,10 +170,10 @@ export default function VentasStatsPage() {
                     <Line 
                       type="monotone" 
                       dataKey="count" 
-                      stroke="hsl(var(--accent))" 
+                      stroke="#ffffff" 
                       strokeWidth={2}
                       name="Leads nuevos"
-                      dot={{ fill: 'hsl(var(--accent))', r: 4 }}
+                      dot={{ fill: '#ffffff', r: 4 }}
                     />
                   </LineChart>
                 </ResponsiveContainer>
