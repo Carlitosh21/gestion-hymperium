@@ -84,3 +84,45 @@ export async function PATCH(
     )
   }
 }
+
+export async function DELETE(
+  request: Request,
+  { params }: { params: { id: string } }
+) {
+  try {
+    await requireInternalSession()
+    
+    // Verificar que el cliente existe antes de eliminar
+    const checkResult = await query(
+      'SELECT id FROM clientes WHERE id = $1',
+      [params.id]
+    )
+
+    if (checkResult.rows.length === 0) {
+      return NextResponse.json(
+        { error: 'Cliente no encontrado' },
+        { status: 404 }
+      )
+    }
+
+    // Eliminar cliente (las relaciones con CASCADE se eliminan automáticamente)
+    await query(
+      'DELETE FROM clientes WHERE id = $1',
+      [params.id]
+    )
+
+    return NextResponse.json({ success: true })
+  } catch (error: any) {
+    if (error.message === 'Unauthorized') {
+      return NextResponse.json(
+        { error: 'No autorizado' },
+        { status: 401 }
+      )
+    }
+    console.error('Error al eliminar cliente:', error)
+    return NextResponse.json(
+      { error: error.message },
+      { status: 500 }
+    )
+  }
+}

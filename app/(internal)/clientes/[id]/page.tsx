@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useParams } from 'next/navigation'
+import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Plus, Edit2, Trash2, Copy, ExternalLink } from 'lucide-react'
 
@@ -41,6 +41,7 @@ interface Resultado {
 
 export default function ClienteDetailPage() {
   const params = useParams()
+  const router = useRouter()
   const clienteId = params.id as string
 
   const [cliente, setCliente] = useState<Cliente | null>(null)
@@ -117,6 +118,28 @@ export default function ClienteDetailPage() {
     }
   }
 
+  const handleDeleteCliente = async () => {
+    if (!confirm(`¿Estás seguro de eliminar al cliente "${cliente?.nombre}"? Esta acción no se puede deshacer.`)) {
+      return
+    }
+
+    try {
+      const response = await fetch(`/api/clientes/${clienteId}`, {
+        method: 'DELETE',
+      })
+
+      if (response.ok) {
+        router.push('/clientes')
+      } else {
+        const error = await response.json()
+        alert(error.error || 'Error al eliminar cliente')
+      }
+    } catch (error) {
+      console.error('Error al eliminar cliente:', error)
+      alert('Error al eliminar cliente')
+    }
+  }
+
   if (loading) {
     return (
       <div className="p-8">
@@ -145,11 +168,22 @@ export default function ClienteDetailPage() {
   return (
     <div className="p-8">
       <div className="mb-6">
-        <Link href="/clientes" className="text-accent hover:underline text-sm mb-4 inline-block">
-          ← Volver a Clientes
-        </Link>
-        <h1 className="text-4xl font-semibold mb-2">{cliente.nombre}</h1>
-        <p className="text-muted">{cliente.email}</p>
+        <div className="flex justify-between items-start mb-4">
+          <div>
+            <Link href="/clientes" className="text-accent hover:underline text-sm mb-4 inline-block">
+              ← Volver a Clientes
+            </Link>
+            <h1 className="text-4xl font-semibold mb-2">{cliente.nombre}</h1>
+            <p className="text-muted">{cliente.email}</p>
+          </div>
+          <button
+            onClick={handleDeleteCliente}
+            className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+          >
+            <Trash2 className="w-4 h-4" />
+            Eliminar Cliente
+          </button>
+        </div>
       </div>
 
       <div className="bg-surface rounded-xl border border-border mb-6">
@@ -639,8 +673,9 @@ function ResultadosTab({ clienteId, resultados, onRefresh }: { clienteId: string
   )
 }
 
-interface PreguntaOnboarding {
-  id: number
+
+interface PreguntaRespuesta {
+  pregunta_id: number
   titulo: string | null
   descripcion: string | null
   pregunta: string
@@ -648,266 +683,35 @@ interface PreguntaOnboarding {
   opciones: any
   orden: number
   activa: boolean
-}
-
-interface PreguntaModalProps {
-  pregunta: PreguntaOnboarding | null
-  onClose: () => void
-  onSave: (data: {
-    titulo: string
-    descripcion: string
-    tipo: string
-    opciones: string[] | null
-    orden: number
-  }) => Promise<void>
-}
-
-function PreguntaModal({ pregunta, onClose, onSave }: PreguntaModalProps) {
-  const [titulo, setTitulo] = useState('')
-  const [descripcion, setDescripcion] = useState('')
-  const [tipo, setTipo] = useState('texto')
-  const [opciones, setOpciones] = useState('')
-  const [orden, setOrden] = useState(0)
-  const [submitting, setSubmitting] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    if (pregunta) {
-      setTitulo(pregunta.titulo || pregunta.pregunta || '')
-      setDescripcion(pregunta.descripcion || '')
-      setTipo(pregunta.tipo || 'texto')
-      setOrden(pregunta.orden || 0)
-      if (pregunta.opciones) {
-        const opts = typeof pregunta.opciones === 'string' 
-          ? JSON.parse(pregunta.opciones) 
-          : pregunta.opciones
-        setOpciones(Array.isArray(opts) ? opts.join(', ') : '')
-      } else {
-        setOpciones('')
-      }
-    } else {
-      setTitulo('')
-      setDescripcion('')
-      setTipo('texto')
-      setOpciones('')
-      setOrden(0)
-    }
-  }, [pregunta])
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!titulo.trim()) {
-      setError('Título es requerido')
-      return
-    }
-
-    setError(null)
-    setSubmitting(true)
-
-    try {
-      const opcionesArray = tipo === 'opcion_multiple' && opciones.trim()
-        ? opciones.split(',').map(o => o.trim()).filter(o => o)
-        : null
-
-      await onSave({
-        titulo: titulo.trim(),
-        descripcion: descripcion.trim() || '',
-        tipo,
-        opciones: opcionesArray,
-        orden,
-      })
-      onClose()
-    } catch (err: any) {
-      setError(err.message || 'Error al guardar pregunta')
-    } finally {
-      setSubmitting(false)
-    }
-  }
-
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-surface rounded-xl p-6 border border-border max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-        <h2 className="text-xl font-semibold mb-4">
-          {pregunta ? 'Editar Pregunta' : 'Nueva Pregunta'}
-        </h2>
-
-        {error && (
-          <div className="mb-4 p-3 bg-red-50 text-red-800 rounded-lg border border-red-200 text-sm">
-            {error}
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium mb-2">Título *</label>
-            <input
-              type="text"
-              required
-              value={titulo}
-              onChange={(e) => setTitulo(e.target.value)}
-              className="w-full px-4 py-2 border border-border rounded-lg bg-background"
-              placeholder="ej: ¿Cuál es tu objetivo principal?"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium mb-2">Descripción</label>
-            <textarea
-              value={descripcion}
-              onChange={(e) => setDescripcion(e.target.value)}
-              rows={3}
-              className="w-full px-4 py-2 border border-border rounded-lg bg-background"
-              placeholder="Descripción adicional o ayuda contextual..."
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium mb-2">Tipo</label>
-              <select
-                value={tipo}
-                onChange={(e) => setTipo(e.target.value)}
-                className="w-full px-4 py-2 border border-border rounded-lg bg-background"
-              >
-                <option value="texto">Texto</option>
-                <option value="numero">Número</option>
-                <option value="opcion_multiple">Opción Múltiple</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-2">Orden</label>
-              <input
-                type="number"
-                value={orden}
-                onChange={(e) => setOrden(parseInt(e.target.value) || 0)}
-                className="w-full px-4 py-2 border border-border rounded-lg bg-background"
-              />
-            </div>
-          </div>
-
-          {tipo === 'opcion_multiple' && (
-            <div>
-              <label className="block text-sm font-medium mb-2">
-                Opciones (separadas por comas) *
-              </label>
-              <input
-                type="text"
-                required={tipo === 'opcion_multiple'}
-                value={opciones}
-                onChange={(e) => setOpciones(e.target.value)}
-                className="w-full px-4 py-2 border border-border rounded-lg bg-background"
-                placeholder="Opción 1, Opción 2, Opción 3"
-              />
-            </div>
-          )}
-
-          <div className="flex gap-3">
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex-1 px-4 py-2 border border-border rounded-lg hover:bg-surface-elevated transition-colors"
-            >
-              Cancelar
-            </button>
-            <button
-              type="submit"
-              disabled={submitting}
-              className="flex-1 px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent-hover disabled:opacity-50 transition-colors"
-            >
-              {submitting ? 'Guardando...' : 'Guardar'}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  )
+  respuesta: string | null
+  respuesta_fecha: string | null
 }
 
 function OnboardingTab({ clienteId, numeroIdentificacion }: { clienteId: string; numeroIdentificacion: string }) {
-  const [preguntas, setPreguntas] = useState<PreguntaOnboarding[]>([])
+  const [preguntasRespuestas, setPreguntasRespuestas] = useState<PreguntaRespuesta[]>([])
   const [loading, setLoading] = useState(true)
-  const [preguntaModal, setPreguntaModal] = useState<PreguntaOnboarding | null>(null)
-  const [showPreguntaModal, setShowPreguntaModal] = useState(false)
 
   useEffect(() => {
-    fetchPreguntas()
-  }, [])
+    fetchOnboarding()
+  }, [clienteId])
 
-  const fetchPreguntas = async () => {
+  const fetchOnboarding = async () => {
     try {
-      const response = await fetch('/api/estadisticas/onboarding/preguntas')
+      const response = await fetch(`/api/clientes/${clienteId}/onboarding`)
+      if (!response.ok) {
+        throw new Error('Error al cargar onboarding')
+      }
       const data = await response.json()
-      setPreguntas(data)
+      setPreguntasRespuestas(data.preguntas_respuestas || [])
     } catch (error) {
-      console.error('Error al cargar preguntas:', error)
+      console.error('Error al cargar onboarding:', error)
     } finally {
       setLoading(false)
     }
   }
 
-  const handleSavePregunta = async (data: {
-    titulo: string
-    descripcion: string
-    tipo: string
-    opciones: string[] | null
-    orden: number
-  }) => {
-    if (preguntaModal) {
-      // Editar
-      const response = await fetch(`/api/estadisticas/onboarding/preguntas/${preguntaModal.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      })
-      if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.error || 'Error al actualizar pregunta')
-      }
-    } else {
-      // Crear
-      const response = await fetch('/api/estadisticas/onboarding/preguntas', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      })
-      if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.error || 'Error al crear pregunta')
-      }
-    }
-    setShowPreguntaModal(false)
-    setPreguntaModal(null)
-    await fetchPreguntas()
-  }
-
-  const handleToggleActiva = async (id: number, activa: boolean) => {
-    try {
-      await fetch(`/api/estadisticas/onboarding/preguntas/${id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ activa: !activa }),
-      })
-      await fetchPreguntas()
-    } catch (error) {
-      console.error('Error al actualizar pregunta:', error)
-    }
-  }
-
-  const handleDeletePregunta = async (id: number) => {
-    if (!confirm('¿Estás seguro de eliminar esta pregunta?')) return
-
-    try {
-      await fetch(`/api/estadisticas/onboarding/preguntas/${id}`, {
-        method: 'DELETE',
-      })
-      await fetchPreguntas()
-    } catch (error) {
-      console.error('Error al eliminar pregunta:', error)
-    }
-  }
-
   const copyUrlPublica = () => {
-    const url = `${window.location.origin}/estadisticas/onboarding`
+    const url = `${window.location.origin}/onboarding`
     navigator.clipboard.writeText(url)
     alert('URL pública copiada al portapapeles')
   }
@@ -916,9 +720,9 @@ function OnboardingTab({ clienteId, numeroIdentificacion }: { clienteId: string;
     <div>
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h3 className="text-lg font-semibold mb-2">Gestión de Formulario de Onboarding</h3>
+          <h3 className="text-lg font-semibold mb-2">Onboarding (Respuestas)</h3>
           <p className="text-sm text-muted">
-            Gestiona las preguntas del formulario de onboarding
+            Respuestas del cliente al formulario de onboarding
           </p>
         </div>
         <div className="flex gap-3">
@@ -928,16 +732,6 @@ function OnboardingTab({ clienteId, numeroIdentificacion }: { clienteId: string;
           >
             <Copy className="w-4 h-4" />
             Copiar URL Pública
-          </button>
-          <button
-            onClick={() => {
-              setPreguntaModal(null)
-              setShowPreguntaModal(true)
-            }}
-            className="flex items-center gap-2 px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent-hover transition-colors"
-          >
-            <Plus className="w-4 h-4" />
-            Nueva Pregunta
           </button>
         </div>
       </div>
@@ -955,87 +749,49 @@ function OnboardingTab({ clienteId, numeroIdentificacion }: { clienteId: string;
         </p>
       </div>
 
-      {/* Listado de preguntas */}
+      {/* Listado de preguntas y respuestas */}
       {loading ? (
         <div className="text-center py-12 text-muted">Cargando...</div>
-      ) : preguntas.length === 0 ? (
+      ) : preguntasRespuestas.length === 0 ? (
         <div className="bg-surface rounded-xl p-6 border border-border text-center text-muted">
-          No hay preguntas. Agrega la primera pregunta usando el botón superior.
+          No hay preguntas configuradas en el formulario de onboarding.
         </div>
       ) : (
         <div className="space-y-4">
-          {preguntas.map((pregunta) => (
+          {preguntasRespuestas
+            .filter(p => p.activa) // Solo mostrar preguntas activas
+            .sort((a, b) => a.orden - b.orden)
+            .map((item) => (
             <div
-              key={pregunta.id}
+              key={item.pregunta_id}
               className="bg-surface rounded-xl p-6 border border-border"
             >
-              <div className="flex justify-between items-start mb-2">
-                <div className="flex-1">
-                  <h4 className="font-medium mb-1">
-                    {pregunta.titulo || pregunta.pregunta}
-                  </h4>
-                  {pregunta.descripcion && (
-                    <p className="text-sm text-muted mb-2">{pregunta.descripcion}</p>
-                  )}
-                  <div className="flex items-center gap-4 text-xs text-muted">
-                    <span>Tipo: {pregunta.tipo}</span>
-                    <span>Orden: {pregunta.orden}</span>
-                    {pregunta.opciones && (
-                      <span>
-                        Opciones:{' '}
-                        {(typeof pregunta.opciones === 'string'
-                          ? JSON.parse(pregunta.opciones)
-                          : pregunta.opciones
-                        ).join(', ')}
-                      </span>
-                    )}
-                  </div>
-                </div>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => {
-                      setPreguntaModal(pregunta)
-                      setShowPreguntaModal(true)
-                    }}
-                    className="p-2 hover:bg-surface-elevated rounded transition-colors"
-                    title="Editar"
-                  >
-                    <Edit2 className="w-4 h-4 text-muted" />
-                  </button>
-                  <button
-                    onClick={() => handleToggleActiva(pregunta.id, pregunta.activa)}
-                    className={`px-3 py-1 text-sm rounded-lg ${
-                      pregunta.activa
-                        ? 'bg-green-600 text-white'
-                        : 'bg-gray-300 text-gray-700'
-                    }`}
-                  >
-                    {pregunta.activa ? 'Activa' : 'Inactiva'}
-                  </button>
-                  <button
-                    onClick={() => handleDeletePregunta(pregunta.id)}
-                    className="p-2 hover:bg-surface-elevated rounded transition-colors"
-                    title="Eliminar"
-                  >
-                    <Trash2 className="w-4 h-4 text-red-500" />
-                  </button>
-                </div>
+              <div className="mb-3">
+                <h4 className="font-medium mb-1">
+                  {item.titulo || item.pregunta}
+                </h4>
+                {item.descripcion && (
+                  <p className="text-sm text-muted mb-2">{item.descripcion}</p>
+                )}
               </div>
+              {item.respuesta ? (
+                <div className="mt-3 p-3 bg-surface-elevated rounded-lg">
+                  <p className="text-sm font-medium mb-1">Respuesta:</p>
+                  <p className="text-sm">{item.respuesta}</p>
+                  {item.respuesta_fecha && (
+                    <p className="text-xs text-muted mt-2">
+                      Respondida el: {new Date(item.respuesta_fecha).toLocaleString('es-AR')}
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <div className="mt-3 p-3 bg-surface-elevated rounded-lg">
+                  <p className="text-sm text-muted italic">Sin respuesta aún</p>
+                </div>
+              )}
             </div>
           ))}
         </div>
-      )}
-
-      {/* Modal de Pregunta */}
-      {showPreguntaModal && (
-        <PreguntaModal
-          pregunta={preguntaModal}
-          onClose={() => {
-            setShowPreguntaModal(false)
-            setPreguntaModal(null)
-          }}
-          onSave={handleSavePregunta}
-        />
       )}
     </div>
   )

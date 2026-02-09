@@ -25,19 +25,6 @@ export default function EstadisticasPage() {
             ))}
           </div>
         </div>
-        
-        <div className="bg-surface rounded-xl p-6 border border-border">
-          <h2 className="text-xl font-semibold mb-4">Formulario de Onboarding</h2>
-          <p className="text-muted text-sm mb-4">
-            Formulario vinculado al Panel del Cliente que puede compartirse públicamente.
-          </p>
-          <a
-            href="/estadisticas/onboarding"
-            className="inline-block px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent-hover transition-colors"
-          >
-            Gestionar Formulario
-          </a>
-        </div>
       </div>
 
       <div className="bg-surface rounded-xl p-6 border border-border">

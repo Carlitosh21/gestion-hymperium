@@ -79,12 +79,20 @@ export default function ClientesPage() {
           <h1 className="text-4xl font-semibold mb-2">Clientes</h1>
           <p className="text-muted text-lg">Gestión de clientes y sus proyectos</p>
         </div>
-        <button
-          onClick={() => setShowForm(!showForm)}
-          className="px-6 py-2.5 bg-accent text-white rounded-lg font-medium hover:bg-accent-hover transition-colors"
-        >
-          {showForm ? 'Cancelar' : '+ Nuevo Cliente'}
-        </button>
+        <div className="flex gap-3">
+          <Link
+            href="/clientes/onboarding"
+            className="px-6 py-2.5 bg-surface border border-border rounded-lg font-medium hover:bg-surface-elevated transition-colors"
+          >
+            Gestionar Onboarding
+          </Link>
+          <button
+            onClick={() => setShowForm(!showForm)}
+            className="px-6 py-2.5 bg-accent text-white rounded-lg font-medium hover:bg-accent-hover transition-colors"
+          >
+            {showForm ? 'Cancelar' : '+ Nuevo Cliente'}
+          </button>
+        </div>
       </div>
 
       {showForm && (
