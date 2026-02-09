@@ -32,7 +32,7 @@ export async function POST() {
     }
     // Si no hay admin, permitir ejecutar migraciones (setup inicial)
     // Ejecutar migraciones en orden
-    const migrations = ['001_initial_schema.sql', '002_auth.sql', '003_leads_pipeline.sql', '004_videos_youtube_metrics.sql', '005_seguimientos.sql']
+    const migrations = ['001_initial_schema.sql', '002_auth.sql', '003_leads_pipeline.sql', '004_videos_youtube_metrics.sql', '005_seguimientos.sql', '006_ideas_contenido_long_short_programado.sql']
     
     for (const migrationFile of migrations) {
       const migrationPath = join(process.cwd(), 'migrations', migrationFile)

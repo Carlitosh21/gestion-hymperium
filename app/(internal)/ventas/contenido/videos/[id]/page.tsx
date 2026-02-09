@@ -62,7 +62,7 @@ export default function VideoDetailPage() {
 
   const fetchIdeas = async () => {
     try {
-      const response = await fetch('/api/ventas/ideas?estado=aceptada')
+      const response = await fetch('/api/ventas/ideas?estado=aceptada,long_form,short_form,programado')
       const data = await response.json()
       setIdeas(data)
     } catch (error) {

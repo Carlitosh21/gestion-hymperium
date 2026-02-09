@@ -13,6 +13,15 @@ export async function PATCH(
     const body = await request.json()
     const { estado } = body
 
+    // Validar estado contra los estados válidos
+    const estadosValidos = ['pendiente', 'aceptada', 'long_form', 'short_form', 'programado']
+    if (estado && !estadosValidos.includes(estado)) {
+      return NextResponse.json(
+        { error: `Estado inválido. Estados válidos: ${estadosValidos.join(', ')}` },
+        { status: 400 }
+      )
+    }
+
     const result = await query(
       `UPDATE ideas_contenido 
        SET estado = $1, updated_at = CURRENT_TIMESTAMP
