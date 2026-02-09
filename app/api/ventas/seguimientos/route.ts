@@ -26,6 +26,10 @@ export async function GET() {
     return NextResponse.json(seguimientosResult.rows)
   } catch (error: any) {
     console.error('Error al obtener seguimientos:', error)
+    // Si es error de tabla no existe, devolver array vacío
+    if (error.code === '42P01' || error.message?.includes('does not exist')) {
+      return NextResponse.json([])
+    }
     return NextResponse.json(
       { error: error.message },
       { status: 500 }

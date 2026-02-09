@@ -897,10 +897,17 @@ export default function ProspeccionPage() {
     setLoadingSeguimientos(true)
     try {
       const response = await fetch('/api/ventas/seguimientos')
+      if (!response.ok) {
+        console.error('Error al cargar seguimientos:', response.statusText)
+        setSeguimientos([])
+        return
+      }
       const data = await response.json()
-      setSeguimientos(data)
+      // Asegurar que siempre sea un array
+      setSeguimientos(Array.isArray(data) ? data : [])
     } catch (error) {
       console.error('Error al cargar seguimientos:', error)
+      setSeguimientos([])
     } finally {
       setLoadingSeguimientos(false)
     }
@@ -909,10 +916,17 @@ export default function ProspeccionPage() {
   const fetchSeguimientosDue = async () => {
     try {
       const response = await fetch('/api/ventas/seguimientos/due')
+      if (!response.ok) {
+        console.error('Error al cargar seguimientos pendientes:', response.statusText)
+        setSeguimientosDue([])
+        return
+      }
       const data = await response.json()
-      setSeguimientosDue(data)
+      // Asegurar que siempre sea un array
+      setSeguimientosDue(Array.isArray(data) ? data : [])
     } catch (error) {
       console.error('Error al cargar seguimientos pendientes:', error)
+      setSeguimientosDue([])
     }
   }
 

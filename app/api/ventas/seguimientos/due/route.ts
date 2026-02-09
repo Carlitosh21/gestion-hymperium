@@ -65,9 +65,11 @@ export async function GET() {
     return NextResponse.json(Object.values(grouped))
   } catch (error: any) {
     console.error('Error al obtener seguimientos pendientes:', error)
-    return NextResponse.json(
-      { error: error.message },
-      { status: 500 }
-    )
+    // Si es error de tabla no existe, devolver array vacío en lugar de error
+    if (error.code === '42P01' || error.message?.includes('does not exist')) {
+      return NextResponse.json([])
+    }
+    // Para otros errores, devolver array vacío también para evitar problemas en el frontend
+    return NextResponse.json([])
   }
 }
