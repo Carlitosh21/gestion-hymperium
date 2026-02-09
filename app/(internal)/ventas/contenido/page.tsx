@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { Plus, ExternalLink } from 'lucide-react'
+import { Plus, ExternalLink, X } from 'lucide-react'
 
 interface IdeaContenido {
   id: number
@@ -132,6 +132,7 @@ export default function ContenidoPage() {
   const [loadingN8n, setLoadingN8n] = useState(false)
   const [showIdeaModal, setShowIdeaModal] = useState(false)
   const [activeTab, setActiveTab] = useState<string>('pendiente')
+  const [descripcionModal, setDescripcionModal] = useState<{ titulo: string; descripcion: string } | null>(null)
 
   useEffect(() => {
     fetchIdeas()
@@ -334,15 +335,29 @@ export default function ContenidoPage() {
 
   const renderIdeaCard = (idea: IdeaContenido) => {
     const descripcion = idea.descripcion_estrategica || idea.descripcion
+    const MAX_LENGTH = 150
+    const descripcionCorta = descripcion && descripcion.length > MAX_LENGTH 
+      ? descripcion.substring(0, MAX_LENGTH) + '...'
+      : descripcion
+    const tieneMasContenido = descripcion && descripcion.length > MAX_LENGTH
+
     return (
       <div
         key={idea.id}
         className="p-6 bg-surface rounded-xl border border-border hover:border-accent/50 transition-all flex flex-col h-full"
       >
         <h3 className="text-lg font-semibold mb-3 leading-tight">{idea.titulo}</h3>
-        {descripcion && (
+        {descripcionCorta && (
           <div className="flex-1 mb-4">
-            <p className="text-sm text-muted leading-relaxed whitespace-pre-wrap">{descripcion}</p>
+            <p className="text-sm text-muted leading-relaxed whitespace-pre-wrap">{descripcionCorta}</p>
+            {tieneMasContenido && (
+              <button
+                onClick={() => setDescripcionModal({ titulo: idea.titulo, descripcion: descripcion! })}
+                className="mt-2 text-sm text-accent hover:underline font-medium"
+              >
+                Ver más
+              </button>
+            )}
           </div>
         )}
         {idea.guion_longform_url && (
@@ -466,6 +481,39 @@ export default function ContenidoPage() {
           onClose={() => setShowIdeaModal(false)}
           onSave={handleSaveIdea}
         />
+      )}
+
+      {/* Modal de Descripción Completa */}
+      {descripcionModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-surface rounded-xl border border-border max-w-4xl w-full max-h-[90vh] flex flex-col">
+            <div className="flex items-center justify-between p-6 border-b border-border">
+              <h2 className="text-2xl font-semibold">{descripcionModal.titulo}</h2>
+              <button
+                onClick={() => setDescripcionModal(null)}
+                className="p-2 hover:bg-surface-elevated rounded-lg transition-colors"
+                aria-label="Cerrar"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-6 overflow-y-auto flex-1">
+              <div className="prose prose-sm max-w-none">
+                <p className="text-base text-foreground leading-relaxed whitespace-pre-wrap">
+                  {descripcionModal.descripcion}
+                </p>
+              </div>
+            </div>
+            <div className="p-6 border-t border-border">
+              <button
+                onClick={() => setDescripcionModal(null)}
+                className="w-full px-6 py-3 bg-accent text-white rounded-lg font-medium hover:bg-accent-hover transition-colors"
+              >
+                Cerrar
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )
