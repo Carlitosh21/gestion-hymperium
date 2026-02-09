@@ -26,6 +26,213 @@ interface Cliente {
   nombre: string
 }
 
+interface CalendarViewProps {
+  llamadas: Llamada[]
+  viewMode: 'mes' | 'semana'
+  onEditLlamada: (llamada: Llamada) => void
+}
+
+function CalendarView({ llamadas, viewMode, onEditLlamada }: CalendarViewProps) {
+  const [currentDate, setCurrentDate] = useState(new Date())
+
+  const getDaysInMonth = (date: Date) => {
+    const year = date.getFullYear()
+    const month = date.getMonth()
+    const firstDay = new Date(year, month, 1)
+    const lastDay = new Date(year, month + 1, 0)
+    const daysInMonth = lastDay.getDate()
+    const startingDayOfWeek = (firstDay.getDay() + 6) % 7 // Lunes = 0
+
+    const days: (Date | null)[] = []
+    // Días vacíos antes del primer día del mes
+    for (let i = 0; i < startingDayOfWeek; i++) {
+      days.push(null)
+    }
+    // Días del mes
+    for (let i = 1; i <= daysInMonth; i++) {
+      days.push(new Date(year, month, i))
+    }
+    return days
+  }
+
+  const getWeekDays = (date: Date) => {
+    const weekStart = new Date(date)
+    const day = weekStart.getDay()
+    const diff = weekStart.getDate() - day + (day === 0 ? -6 : 1) // Lunes
+    weekStart.setDate(diff)
+    
+    const days: Date[] = []
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(weekStart)
+      d.setDate(weekStart.getDate() + i)
+      days.push(d)
+    }
+    return days
+  }
+
+  const getLlamadasForDate = (date: Date | null) => {
+    if (!date) return []
+    const dateStr = date.toISOString().split('T')[0]
+    return llamadas.filter(ll => {
+      const llamadaDate = new Date(ll.fecha).toISOString().split('T')[0]
+      return llamadaDate === dateStr
+    })
+  }
+
+  const formatTime = (fecha: string) => {
+    return new Date(fecha).toLocaleTimeString('es-ES', {
+      hour: '2-digit',
+      minute: '2-digit',
+    })
+  }
+
+  const monthNames = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre']
+  const dayNames = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']
+
+  const prevPeriod = () => {
+    const newDate = new Date(currentDate)
+    if (viewMode === 'mes') {
+      newDate.setMonth(newDate.getMonth() - 1)
+    } else {
+      newDate.setDate(newDate.getDate() - 7)
+    }
+    setCurrentDate(newDate)
+  }
+
+  const nextPeriod = () => {
+    const newDate = new Date(currentDate)
+    if (viewMode === 'mes') {
+      newDate.setMonth(newDate.getMonth() + 1)
+    } else {
+      newDate.setDate(newDate.getDate() + 7)
+    }
+    setCurrentDate(newDate)
+  }
+
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+
+  return (
+    <div className="bg-surface rounded-xl border border-border">
+      <div className="p-6 border-b border-border flex justify-between items-center">
+        <div className="flex items-center gap-4">
+          <button
+            onClick={prevPeriod}
+            className="p-2 hover:bg-surface-elevated rounded transition-colors"
+          >
+            ←
+          </button>
+          <h2 className="text-xl font-semibold">
+            {viewMode === 'mes'
+              ? `${monthNames[currentDate.getMonth()]} ${currentDate.getFullYear()}`
+              : `Semana del ${getWeekDays(currentDate)[0].toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}`}
+          </h2>
+          <button
+            onClick={nextPeriod}
+            className="p-2 hover:bg-surface-elevated rounded transition-colors"
+          >
+            →
+          </button>
+        </div>
+        <button
+          onClick={() => setCurrentDate(new Date())}
+          className="px-4 py-2 text-sm border border-border rounded-lg hover:bg-surface-elevated transition-colors"
+        >
+          Hoy
+        </button>
+      </div>
+
+      {viewMode === 'mes' ? (
+        <div className="p-6">
+          <div className="grid grid-cols-7 gap-2 mb-2">
+            {dayNames.map((day) => (
+              <div key={day} className="text-center text-sm font-medium text-muted py-2">
+                {day}
+              </div>
+            ))}
+          </div>
+          <div className="grid grid-cols-7 gap-2">
+            {getDaysInMonth(currentDate).map((date, idx) => {
+              const llamadasDelDia = getLlamadasForDate(date)
+              const isToday = date && date.getTime() === today.getTime()
+              const isCurrentMonth = date && date.getMonth() === currentDate.getMonth()
+
+              return (
+                <div
+                  key={idx}
+                  className={`min-h-[100px] border border-border rounded-lg p-2 ${
+                    isToday ? 'bg-accent/10 border-accent' : 'bg-surface-elevated'
+                  } ${!isCurrentMonth ? 'opacity-30' : ''}`}
+                >
+                  {date && (
+                    <>
+                      <div className={`text-sm font-medium mb-1 ${isToday ? 'text-accent' : ''}`}>
+                        {date.getDate()}
+                      </div>
+                      <div className="space-y-1">
+                        {llamadasDelDia.map((ll) => (
+                          <div
+                            key={ll.id}
+                            onClick={() => onEditLlamada(ll)}
+                            className="text-xs bg-accent/20 hover:bg-accent/30 rounded p-1 cursor-pointer truncate"
+                            title={`${formatTime(ll.fecha)} - ${ll.lead_nombre || ll.cliente_nombre || 'Sin nombre'}`}
+                          >
+                            <div className="font-medium">{formatTime(ll.fecha)}</div>
+                            <div className="truncate">{ll.lead_nombre || ll.cliente_nombre || 'Sin nombre'}</div>
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      ) : (
+        <div className="p-6">
+          <div className="grid grid-cols-7 gap-4">
+            {getWeekDays(currentDate).map((date) => {
+              const llamadasDelDia = getLlamadasForDate(date)
+              const isToday = date.getTime() === today.getTime()
+
+              return (
+                <div key={date.toISOString()} className="min-h-[400px]">
+                  <div className={`text-center mb-3 pb-2 border-b border-border ${isToday ? 'text-accent font-semibold' : ''}`}>
+                    <div className="text-sm text-muted">{dayNames[date.getDay() === 0 ? 6 : date.getDay() - 1]}</div>
+                    <div className="text-lg">{date.getDate()}</div>
+                  </div>
+                  <div className="space-y-2">
+                    {llamadasDelDia
+                      .sort((a, b) => new Date(a.fecha).getTime() - new Date(b.fecha).getTime())
+                      .map((ll) => (
+                        <div
+                          key={ll.id}
+                          onClick={() => onEditLlamada(ll)}
+                          className="bg-surface-elevated border border-border rounded-lg p-3 cursor-pointer hover:bg-surface transition-colors"
+                        >
+                          <div className="text-sm font-medium text-accent mb-1">
+                            {formatTime(ll.fecha)}
+                          </div>
+                          <div className="font-medium text-sm mb-1">
+                            {ll.lead_nombre || ll.cliente_nombre || 'Sin nombre'}
+                          </div>
+                          {ll.resultado && (
+                            <div className="text-xs text-muted truncate">{ll.resultado}</div>
+                          )}
+                        </div>
+                      ))}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function LlamadasPage() {
   const [llamadas, setLlamadas] = useState<Llamada[]>([])
   const [leads, setLeads] = useState<Lead[]>([])
@@ -485,213 +692,6 @@ function LlamadaEditModal({ llamada, onClose, onSave }: LlamadaEditModalProps) {
           </div>
         </form>
       </div>
-    </div>
-  )
-}
-
-interface CalendarViewProps {
-  llamadas: Llamada[]
-  viewMode: 'mes' | 'semana'
-  onEditLlamada: (llamada: Llamada) => void
-}
-
-function CalendarView({ llamadas, viewMode, onEditLlamada }: CalendarViewProps) {
-  const [currentDate, setCurrentDate] = useState(new Date())
-
-  const getDaysInMonth = (date: Date) => {
-    const year = date.getFullYear()
-    const month = date.getMonth()
-    const firstDay = new Date(year, month, 1)
-    const lastDay = new Date(year, month + 1, 0)
-    const daysInMonth = lastDay.getDate()
-    const startingDayOfWeek = (firstDay.getDay() + 6) % 7 // Lunes = 0
-
-    const days: (Date | null)[] = []
-    // Días vacíos antes del primer día del mes
-    for (let i = 0; i < startingDayOfWeek; i++) {
-      days.push(null)
-    }
-    // Días del mes
-    for (let i = 1; i <= daysInMonth; i++) {
-      days.push(new Date(year, month, i))
-    }
-    return days
-  }
-
-  const getWeekDays = (date: Date) => {
-    const weekStart = new Date(date)
-    const day = weekStart.getDay()
-    const diff = weekStart.getDate() - day + (day === 0 ? -6 : 1) // Lunes
-    weekStart.setDate(diff)
-    
-    const days: Date[] = []
-    for (let i = 0; i < 7; i++) {
-      const d = new Date(weekStart)
-      d.setDate(weekStart.getDate() + i)
-      days.push(d)
-    }
-    return days
-  }
-
-  const getLlamadasForDate = (date: Date | null) => {
-    if (!date) return []
-    const dateStr = date.toISOString().split('T')[0]
-    return llamadas.filter(ll => {
-      const llamadaDate = new Date(ll.fecha).toISOString().split('T')[0]
-      return llamadaDate === dateStr
-    })
-  }
-
-  const formatTime = (fecha: string) => {
-    return new Date(fecha).toLocaleTimeString('es-ES', {
-      hour: '2-digit',
-      minute: '2-digit',
-    })
-  }
-
-  const monthNames = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre']
-  const dayNames = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']
-
-  const prevPeriod = () => {
-    const newDate = new Date(currentDate)
-    if (viewMode === 'mes') {
-      newDate.setMonth(newDate.getMonth() - 1)
-    } else {
-      newDate.setDate(newDate.getDate() - 7)
-    }
-    setCurrentDate(newDate)
-  }
-
-  const nextPeriod = () => {
-    const newDate = new Date(currentDate)
-    if (viewMode === 'mes') {
-      newDate.setMonth(newDate.getMonth() + 1)
-    } else {
-      newDate.setDate(newDate.getDate() + 7)
-    }
-    setCurrentDate(newDate)
-  }
-
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-
-  return (
-    <div className="bg-surface rounded-xl border border-border">
-      <div className="p-6 border-b border-border flex justify-between items-center">
-        <div className="flex items-center gap-4">
-          <button
-            onClick={prevPeriod}
-            className="p-2 hover:bg-surface-elevated rounded transition-colors"
-          >
-            ←
-          </button>
-          <h2 className="text-xl font-semibold">
-            {viewMode === 'mes'
-              ? `${monthNames[currentDate.getMonth()]} ${currentDate.getFullYear()}`
-              : `Semana del ${getWeekDays(currentDate)[0].toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}`}
-          </h2>
-          <button
-            onClick={nextPeriod}
-            className="p-2 hover:bg-surface-elevated rounded transition-colors"
-          >
-            →
-          </button>
-        </div>
-        <button
-          onClick={() => setCurrentDate(new Date())}
-          className="px-4 py-2 text-sm border border-border rounded-lg hover:bg-surface-elevated transition-colors"
-        >
-          Hoy
-        </button>
-      </div>
-
-      {viewMode === 'mes' ? (
-        <div className="p-6">
-          <div className="grid grid-cols-7 gap-2 mb-2">
-            {dayNames.map((day) => (
-              <div key={day} className="text-center text-sm font-medium text-muted py-2">
-                {day}
-              </div>
-            ))}
-          </div>
-          <div className="grid grid-cols-7 gap-2">
-            {getDaysInMonth(currentDate).map((date, idx) => {
-              const llamadasDelDia = getLlamadasForDate(date)
-              const isToday = date && date.getTime() === today.getTime()
-              const isCurrentMonth = date && date.getMonth() === currentDate.getMonth()
-
-              return (
-                <div
-                  key={idx}
-                  className={`min-h-[100px] border border-border rounded-lg p-2 ${
-                    isToday ? 'bg-accent/10 border-accent' : 'bg-surface-elevated'
-                  } ${!isCurrentMonth ? 'opacity-30' : ''}`}
-                >
-                  {date && (
-                    <>
-                      <div className={`text-sm font-medium mb-1 ${isToday ? 'text-accent' : ''}`}>
-                        {date.getDate()}
-                      </div>
-                      <div className="space-y-1">
-                        {llamadasDelDia.map((ll) => (
-                          <div
-                            key={ll.id}
-                            onClick={() => onEditLlamada(ll)}
-                            className="text-xs bg-accent/20 hover:bg-accent/30 rounded p-1 cursor-pointer truncate"
-                            title={`${formatTime(ll.fecha)} - ${ll.lead_nombre || ll.cliente_nombre || 'Sin nombre'}`}
-                          >
-                            <div className="font-medium">{formatTime(ll.fecha)}</div>
-                            <div className="truncate">{ll.lead_nombre || ll.cliente_nombre || 'Sin nombre'}</div>
-                          </div>
-                        ))}
-                      </div>
-                    </>
-                  )}
-                </div>
-              )
-            })}
-          </div>
-        </div>
-      ) : (
-        <div className="p-6">
-          <div className="grid grid-cols-7 gap-4">
-            {getWeekDays(currentDate).map((date) => {
-              const llamadasDelDia = getLlamadasForDate(date)
-              const isToday = date.getTime() === today.getTime()
-
-              return (
-                <div key={date.toISOString()} className="min-h-[400px]">
-                  <div className={`text-center mb-3 pb-2 border-b border-border ${isToday ? 'text-accent font-semibold' : ''}`}>
-                    <div className="text-sm text-muted">{dayNames[date.getDay() === 0 ? 6 : date.getDay() - 1]}</div>
-                    <div className="text-lg">{date.getDate()}</div>
-                  </div>
-                  <div className="space-y-2">
-                    {llamadasDelDia
-                      .sort((a, b) => new Date(a.fecha).getTime() - new Date(b.fecha).getTime())
-                      .map((ll) => (
-                        <div
-                          key={ll.id}
-                          onClick={() => onEditLlamada(ll)}
-                          className="bg-surface-elevated border border-border rounded-lg p-3 cursor-pointer hover:bg-surface transition-colors"
-                        >
-                          <div className="text-sm font-medium text-accent mb-1">
-                            {formatTime(ll.fecha)}
-                          </div>
-                          <div className="font-medium text-sm mb-1">
-                            {ll.lead_nombre || ll.cliente_nombre || 'Sin nombre'}
-                          </div>
-                          {ll.resultado && (
-                            <div className="text-xs text-muted truncate">{ll.resultado}</div>
-                          )}
-                        </div>
-                      ))}
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        </div>
-      )}
     </div>
   )
 }
