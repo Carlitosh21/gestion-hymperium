@@ -20,7 +20,7 @@ import {
   useSortable,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { GripVertical, Pencil, Plus, Copy, ExternalLink, Check, Edit2, Trash2 } from 'lucide-react'
+import { GripVertical, Pencil, Plus, Copy, ExternalLink, Check, Edit2, Trash2, Search } from 'lucide-react'
 
 interface Lead {
   id: number
@@ -394,7 +394,7 @@ function ConversionModal({ lead, onClose, onConvert }: ConversionModalProps) {
   )
 }
 
-function LeadCard({ lead, onEdit, onDelete }: { lead: Lead; onEdit: (lead: Lead) => void; onDelete: (lead: Lead) => void }) {
+function LeadCard({ lead, onEdit, onDelete, onOpenInstagram }: { lead: Lead; onEdit: (lead: Lead) => void; onDelete: (lead: Lead) => void; onOpenInstagram: (usuarioIg: string | null) => void }) {
   const {
     attributes,
     listeners,
@@ -445,9 +445,20 @@ function LeadCard({ lead, onEdit, onDelete }: { lead: Lead; onEdit: (lead: Lead)
         <button
           onClick={(e) => {
             e.stopPropagation()
+            if (lead.usuario_ig) onOpenInstagram(lead.usuario_ig)
+          }}
+          disabled={!lead.usuario_ig}
+          className="p-1.5 hover:bg-surface rounded transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+          title={lead.usuario_ig ? 'Abrir perfil de Instagram' : 'Sin usuario IG'}
+        >
+          <ExternalLink className="w-4 h-4 text-muted" />
+        </button>
+        <button
+          onClick={(e) => {
+            e.stopPropagation()
             onEdit(lead)
           }}
-          className="ml-2 p-1.5 hover:bg-surface rounded transition-colors"
+          className="p-1.5 hover:bg-surface rounded transition-colors"
           title="Editar lead"
         >
           <Pencil className="w-4 h-4 text-muted" />
@@ -642,7 +653,7 @@ function SeguimientoModal({ seguimiento, onClose, onSave }: SeguimientoModalProp
   )
 }
 
-function Column({ estado, leads, onEditLead, onDeleteLead }: { estado: { id: string; label: string; color: string }; leads: Lead[]; onEditLead: (lead: Lead) => void; onDeleteLead: (lead: Lead) => void }) {
+function Column({ estado, leads, onEditLead, onDeleteLead, onOpenInstagram }: { estado: { id: string; label: string; color: string }; leads: Lead[]; onEditLead: (lead: Lead) => void; onDeleteLead: (lead: Lead) => void; onOpenInstagram: (usuarioIg: string | null) => void }) {
   const { setNodeRef, isOver } = useDroppable({ id: estado.id })
 
   return (
@@ -661,7 +672,7 @@ function Column({ estado, leads, onEditLead, onDeleteLead }: { estado: { id: str
               <p className="text-sm text-muted text-center py-4">Sin leads</p>
             ) : (
               leads.map((lead) => (
-                <LeadCard key={lead.id} lead={lead} onEdit={onEditLead} onDelete={onDeleteLead} />
+                <LeadCard key={lead.id} lead={lead} onEdit={onEditLead} onDelete={onDeleteLead} onOpenInstagram={onOpenInstagram} />
               ))
             )}
           </div>
@@ -686,6 +697,7 @@ export default function ProspeccionPage() {
     newEstado: string
   } | null>(null)
   const [editLead, setEditLead] = useState<Lead | null>(null)
+  const [searchTerm, setSearchTerm] = useState('')
   
   // Estados para seguimientos
   const [seguimientos, setSeguimientos] = useState<Seguimiento[]>([])
@@ -1037,8 +1049,17 @@ export default function ProspeccionPage() {
     window.open(`https://instagram.com/${usuarioIg}`, '_blank')
   }
 
+  const filteredLeads = searchTerm.trim()
+    ? leads.filter((l) => {
+        const u = (l.usuario_ig || '').toLowerCase()
+        const n = (l.nombre || '').toLowerCase()
+        const q = searchTerm.trim().toLowerCase()
+        return u.includes(q) || n.includes(q)
+      })
+    : leads
+
   const leadsByEstado = ESTADOS_PIPELINE.reduce((acc, estado) => {
-    acc[estado.id] = leads.filter(l => l.estado === estado.id)
+    acc[estado.id] = filteredLeads.filter(l => l.estado === estado.id)
     return acc
   }, {} as Record<string, Lead[]>)
 
@@ -1086,6 +1107,20 @@ export default function ProspeccionPage() {
       {/* Vista Pipeline */}
       {vistaActiva === 'pipeline' && (
         <>
+      {!loading && (
+        <div className="mb-4 flex items-center gap-2">
+          <div className="relative flex-1 max-w-sm">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Buscar por @usuario o nombre..."
+              className="w-full pl-10 pr-4 py-2 border border-border rounded-lg bg-background"
+            />
+          </div>
+        </div>
+      )}
 
       {showForm && (
         <div className="mb-8 bg-surface rounded-xl p-6 border border-border">
@@ -1140,6 +1175,7 @@ export default function ProspeccionPage() {
                   leads={leadsByEstado[estado.id] || []}
                   onEditLead={setEditLead}
                   onDeleteLead={handleDeleteLead}
+                  onOpenInstagram={openInstagram}
                 />
               ))}
             </div>
@@ -1301,7 +1337,7 @@ export default function ProspeccionPage() {
                                 className="flex items-center gap-1 px-3 py-1.5 bg-green-500 text-white rounded hover:bg-green-600 transition-colors text-sm"
                               >
                                 <Check className="w-4 h-4" />
-                                Enviado
+                                Ya enviado
                               </button>
                             </div>
                           </div>

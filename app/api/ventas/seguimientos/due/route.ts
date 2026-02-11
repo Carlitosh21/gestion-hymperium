@@ -26,8 +26,7 @@ export async function GET() {
       INNER JOIN leads l ON l.estado = se.estado
       LEFT JOIN seguimiento_envios env ON 
         env.seguimiento_id = s.id 
-        AND env.lead_id = l.id 
-        AND env.estado_editado_at_snapshot = l.estado_editado_at
+        AND env.lead_id = l.id
       WHERE 
         s.activo = true
         AND l.cliente_id IS NULL
