@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Home, Briefcase, Users, BarChart3, TrendingUp, DollarSign, Settings } from 'lucide-react'
+import { Home, Briefcase, Users, BarChart3, TrendingUp, DollarSign, Layers, Settings } from 'lucide-react'
 
 const menuItems = [
   { href: '/', label: 'Inicio', icon: Home },
@@ -11,6 +11,7 @@ const menuItems = [
   { href: '/estadisticas', label: 'Estadísticas', icon: BarChart3 },
   { href: '/proyecciones', label: 'Proyecciones', icon: TrendingUp },
   { href: '/gestion-interna/finanzas', label: 'Finanzas', icon: DollarSign },
+  { href: '/oferta-servicios', label: 'Oferta y Servicios', icon: Layers },
   { href: '/gestion-interna', label: 'Gestión Interna', icon: Settings },
 ]
 
