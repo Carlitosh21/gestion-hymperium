@@ -24,11 +24,13 @@ export async function POST(request: Request) {
   try {
     await requireInternalSession()
     const body = await request.json()
-    const { monto, descripcion, categoria, proyecto_id, fecha } = body
+    const { monto, descripcion, categoria, proyecto_id, fecha, estado } = body
+
+    const estadoVal = estado === 'pendiente' ? 'pendiente' : 'completado'
 
     const result = await query(
-      `INSERT INTO egresos (monto, descripcion, categoria, proyecto_id, fecha)
-       VALUES ($1, $2, $3, $4, $5)
+      `INSERT INTO egresos (monto, descripcion, categoria, proyecto_id, fecha, estado)
+       VALUES ($1, $2, $3, $4, $5, $6)
        RETURNING *`,
       [
         monto,
@@ -36,6 +38,7 @@ export async function POST(request: Request) {
         categoria,
         proyecto_id || null,
         fecha || new Date().toISOString(),
+        estadoVal,
       ]
     )
 

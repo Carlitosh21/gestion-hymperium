@@ -21,11 +21,16 @@ export async function GET() {
     `)
     const totalIngresosHymperium = parseFloat(hymperiumResult.rows[0].total)
 
-    // Total egresos
+    // Total egresos (solo completados para cuentas reales)
     const egresosResult = await query(
-      'SELECT COALESCE(SUM(monto), 0) as total FROM egresos'
+      `SELECT COALESCE(SUM(monto), 0) as total FROM egresos WHERE COALESCE(estado, 'completado') = 'completado'`
     )
     const totalEgresos = parseFloat(egresosResult.rows[0].total)
+
+    const egresosPendientesResult = await query(
+      `SELECT COALESCE(SUM(monto), 0) as total FROM egresos WHERE estado = 'pendiente'`
+    )
+    const totalEgresosPendientes = parseFloat(egresosPendientesResult.rows[0].total)
 
     const totalDisponible = totalIngresos - totalEgresos
     const totalDisponibleHymperium = totalIngresosHymperium - totalEgresos
@@ -41,10 +46,11 @@ export async function GET() {
       monto_asignado: (totalDisponibleHymperium * parseFloat(cat.porcentaje)) / 100,
     }))
 
-    // Calcular egresos por categoría
+    // Calcular egresos por categoría (solo completados)
     const egresosPorCategoria = await query(`
       SELECT categoria, COALESCE(SUM(monto), 0) as total
       FROM egresos
+      WHERE COALESCE(estado, 'completado') = 'completado'
       GROUP BY categoria
     `)
 
@@ -64,6 +70,7 @@ export async function GET() {
       total_ingresos: totalIngresos,
       total_ingresos_hymperium: totalIngresosHymperium,
       total_egresos: totalEgresos,
+      total_egresos_pendientes: totalEgresosPendientes,
       total_disponible: totalDisponible,
       total_disponible_hymperium: totalDisponibleHymperium,
       categorias: categoriasConEgresos,

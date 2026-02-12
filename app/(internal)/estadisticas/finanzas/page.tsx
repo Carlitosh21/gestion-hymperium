@@ -29,7 +29,12 @@ import {
   Cell,
 } from 'recharts'
 
+type Granularity = 'daily' | 'weekly' | 'monthly' | 'quarterly'
+
 interface StatsData {
+  granularity?: Granularity
+  year?: number
+  quarter?: number
   kpis: {
     totalIngresosBrutos: number
     totalIngresosHymperium: number
@@ -37,6 +42,7 @@ interface StatsData {
     totalIngresosJoaco: number
     totalPagosDevs: number
     totalEgresos: number
+    totalEgresosPendientes: number
     balance: number
     margenHymperium: number
     tasaEgreso: number
@@ -50,7 +56,8 @@ interface StatsData {
     pagos_devs: number
   }>
   timeseriesEgresos: Array<{ dia: string; monto: number }>
-  flujoCaja: Array<{ dia: string; ingresos: number; egresos: number }>
+  timeseriesEgresosPendientes?: Array<{ dia: string; monto: number }>
+  flujoCaja: Array<{ dia: string; ingresos: number; egresos: number; egresos_pendientes?: number }>
   egresosPorCategoria: Array<{ categoria: string; total: number; porcentaje: number }>
   topIngresos: Array<{ id: number; descripcion: string; monto: number; hymperium: number; fecha: string }>
   topEgresos: Array<{ id: number; descripcion: string; categoria: string; monto: number; fecha: string }>
@@ -60,31 +67,85 @@ interface StatsData {
   } | null
 }
 
-const RANGE_OPTIONS = [
-  { value: '7d', label: 'Últimos 7 días' },
-  { value: '30d', label: 'Últimos 30 días' },
-  { value: '90d', label: 'Últimos 90 días' },
-  { value: 'all', label: 'Todo el histórico' },
+const GRANULARITY_OPTIONS: { value: Granularity; label: string }[] = [
+  { value: 'daily', label: 'Diario' },
+  { value: 'weekly', label: 'Semanal' },
+  { value: 'monthly', label: 'Mensual' },
+  { value: 'quarterly', label: 'Trimestral' },
+]
+
+const RANGE_DAILY = [
+  { value: '7d', label: '7 días' },
+  { value: '30d', label: '30 días' },
+  { value: '90d', label: '90 días' },
+  { value: 'all', label: 'Todo' },
+]
+
+const RANGE_WEEKLY = [
+  { value: '4w', label: '4 semanas' },
+  { value: '12w', label: '12 semanas' },
+  { value: '52w', label: '52 semanas' },
+  { value: 'all', label: 'Todo' },
+]
+
+const RANGE_MONTHLY = [
+  { value: '3m', label: '3 meses' },
+  { value: '6m', label: '6 meses' },
+  { value: '12m', label: '12 meses' },
+  { value: 'all', label: 'Todo' },
+]
+
+const QUARTERS = [
+  { value: 1, label: 'Q1 (Ene–Mar)' },
+  { value: 2, label: 'Q2 (Abr–Jun)' },
+  { value: 3, label: 'Q3 (Jul–Sep)' },
+  { value: 4, label: 'Q4 (Oct–Dic)' },
 ]
 
 const COLORS = ['#22c55e', '#3b82f6', '#8b5cf6', '#f59e0b', '#ef4444', '#06b6d4', '#ec4899']
 
 export default function FinanzasStatsPage() {
   const router = useRouter()
+  const [granularity, setGranularity] = useState<Granularity>('daily')
   const [range, setRange] = useState('30d')
+  const [year, setYear] = useState(() => new Date().getFullYear())
+  const [quarter, setQuarter] = useState(1)
   const [loading, setLoading] = useState(true)
   const [stats, setStats] = useState<StatsData | null>(null)
   const [error, setError] = useState<string | null>(null)
 
+  const rangeOptions =
+    granularity === 'daily' ? RANGE_DAILY : granularity === 'weekly' ? RANGE_WEEKLY : granularity === 'monthly' ? RANGE_MONTHLY : []
+
+  useEffect(() => {
+    if (granularity === 'quarterly') {
+      setQuarter(Math.floor(new Date().getMonth() / 3) + 1)
+    } else if (granularity === 'daily') {
+      setRange('30d')
+    } else if (granularity === 'weekly') {
+      setRange('12w')
+    } else if (granularity === 'monthly') {
+      setRange('6m')
+    }
+  }, [granularity])
+
   useEffect(() => {
     fetchStats()
-  }, [range])
+  }, [granularity, range, year, quarter])
 
   const fetchStats = async () => {
     setLoading(true)
     setError(null)
     try {
-      const response = await fetch(`/api/estadisticas/finanzas?range=${range}`)
+      const params = new URLSearchParams()
+      params.set('granularity', granularity)
+      if (granularity === 'quarterly') {
+        params.set('year', String(year))
+        params.set('quarter', String(quarter))
+      } else {
+        params.set('range', range)
+      }
+      const response = await fetch(`/api/estadisticas/finanzas?${params}`)
       if (!response.ok) {
         throw new Error('Error al cargar estadísticas')
       }
@@ -108,6 +169,17 @@ export default function FinanzasStatsPage() {
     return `${value.toFixed(1)}%`
   }
 
+  const chartSubtitle =
+    granularity === 'daily'
+      ? 'por Día'
+      : granularity === 'weekly'
+        ? 'por Semana'
+        : granularity === 'monthly'
+          ? 'por Mes'
+          : granularity === 'quarterly'
+            ? `Q${quarter} ${year}`
+            : 'por Trimestre'
+
   return (
     <div className="p-8">
       {/* Header */}
@@ -125,6 +197,55 @@ export default function FinanzasStatsPage() {
           </div>
         </div>
         <div className="flex items-center gap-3">
+          <select
+            value={granularity}
+            onChange={(e) => setGranularity(e.target.value as Granularity)}
+            className="px-4 py-2 border border-border rounded-lg bg-background text-sm font-medium"
+          >
+            {GRANULARITY_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+          {granularity === 'quarterly' ? (
+            <>
+              <select
+                value={year}
+                onChange={(e) => setYear(parseInt(e.target.value, 10))}
+                className="px-4 py-2 border border-border rounded-lg bg-background text-sm font-medium"
+              >
+                {Array.from({ length: 10 }, (_, i) => new Date().getFullYear() - i).map((y) => (
+                  <option key={y} value={y}>
+                    {y}
+                  </option>
+                ))}
+              </select>
+              <select
+                value={quarter}
+                onChange={(e) => setQuarter(parseInt(e.target.value, 10))}
+                className="px-4 py-2 border border-border rounded-lg bg-background text-sm font-medium"
+              >
+                {QUARTERS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </>
+          ) : (
+            <select
+              value={range}
+              onChange={(e) => setRange(e.target.value)}
+              className="px-4 py-2 border border-border rounded-lg bg-background text-sm font-medium"
+            >
+              {rangeOptions.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          )}
           <button
             onClick={() => fetchStats()}
             disabled={loading}
@@ -133,17 +254,6 @@ export default function FinanzasStatsPage() {
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
             Actualizar
           </button>
-          <select
-            value={range}
-            onChange={(e) => setRange(e.target.value)}
-            className="px-4 py-2 border border-border rounded-lg bg-background text-sm font-medium"
-          >
-            {RANGE_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
         </div>
       </div>
 
@@ -169,7 +279,7 @@ export default function FinanzasStatsPage() {
               <h2 className="text-2xl font-semibold">Indicadores Clave</h2>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-7 gap-6">
               <div className="bg-surface rounded-xl p-6 border border-border">
                 <div className="flex items-center justify-between mb-2">
                   <TrendingUp className="w-5 h-5 text-blue-500" />
@@ -194,10 +304,22 @@ export default function FinanzasStatsPage() {
                 <div className="flex items-center justify-between mb-2">
                   <TrendingDown className="w-5 h-5 text-red-500" />
                 </div>
-                <p className="text-sm text-muted">Total Egresos</p>
+                <p className="text-sm text-muted">Egresos reales</p>
                 <p className="text-2xl font-bold text-red-500">
                   {formatCurrency(stats.kpis.totalEgresos)}
                 </p>
+                <p className="text-xs text-muted mt-1">Completados (descuentan caja)</p>
+              </div>
+
+              <div className="bg-surface rounded-xl p-6 border border-border">
+                <div className="flex items-center justify-between mb-2">
+                  <TrendingDown className="w-5 h-5 text-orange-500" />
+                </div>
+                <p className="text-sm text-muted">Egresos pendientes</p>
+                <p className="text-2xl font-bold text-orange-500">
+                  {formatCurrency(stats.kpis.totalEgresosPendientes ?? 0)}
+                </p>
+                <p className="text-xs text-muted mt-1">No afectan balance</p>
               </div>
 
               <div className="bg-surface rounded-xl p-6 border border-border">
@@ -279,8 +401,9 @@ export default function FinanzasStatsPage() {
             </div>
 
             <div className="bg-surface rounded-xl p-6 border border-border">
-              <h3 className="text-lg font-semibold mb-4">Ingresos Hymperium vs Egresos por Día</h3>
-              {stats.flujoCaja.some((d) => d.ingresos > 0 || d.egresos > 0) ? (
+              <h3 className="text-lg font-semibold mb-4">Ingresos Hymperium vs Egresos ({chartSubtitle})</h3>
+              <p className="text-sm text-muted mb-4">Egresos reales (completados) afectan el balance. Los pendientes se muestran aparte.</p>
+              {stats.flujoCaja.some((d) => d.ingresos > 0 || d.egresos > 0 || (d.egresos_pendientes ?? 0) > 0) ? (
                 <ResponsiveContainer width="100%" height={300}>
                   <LineChart data={stats.flujoCaja}>
                     <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.3)" />
@@ -313,8 +436,17 @@ export default function FinanzasStatsPage() {
                       dataKey="egresos"
                       stroke="#ef4444"
                       strokeWidth={2}
-                      name="Egresos"
+                      name="Egresos reales (completados)"
                       dot={{ fill: '#ef4444', r: 4 }}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="egresos_pendientes"
+                      stroke="#f97316"
+                      strokeWidth={2}
+                      strokeDasharray="5 5"
+                      name="Egresos pendientes"
+                      dot={{ fill: '#f97316', r: 4 }}
                     />
                   </LineChart>
                 </ResponsiveContainer>
@@ -334,7 +466,7 @@ export default function FinanzasStatsPage() {
             </div>
 
             <div className="bg-surface rounded-xl p-6 border border-border">
-              <h3 className="text-lg font-semibold mb-4">Desglose por Día (Bruto, Hymperium, Carlitos, Joaco, Pagos Devs)</h3>
+              <h3 className="text-lg font-semibold mb-4">Desglose {chartSubtitle} (Bruto, Hymperium, Carlitos, Joaco, Pagos Devs)</h3>
               {stats.timeseriesIngresos.some((d) => d.bruto > 0 || d.hymperium > 0) ? (
                 <ResponsiveContainer width="100%" height={300}>
                   <BarChart data={stats.timeseriesIngresos}>
@@ -387,6 +519,7 @@ export default function FinanzasStatsPage() {
                 <TrendingDown className="w-6 h-6 text-red-500" />
                 <h2 className="text-2xl font-semibold">Pagos según Categoría</h2>
               </div>
+              <p className="text-sm text-muted mb-2">Solo egresos completados (cuentas reales)</p>
 
               <div className="bg-surface rounded-xl p-6 border border-border">
                 {stats.egresosPorCategoria.length > 0 ? (
@@ -476,7 +609,7 @@ export default function FinanzasStatsPage() {
                 </div>
 
                 <div className="bg-surface rounded-xl p-6 border border-border">
-                  <h3 className="text-lg font-semibold mb-4">Top Egresos</h3>
+                  <h3 className="text-lg font-semibold mb-4">Top Egresos (completados)</h3>
                   {stats.topEgresos.length > 0 ? (
                     <div className="space-y-3">
                       {stats.topEgresos.slice(0, 5).map((egr) => (
@@ -516,6 +649,7 @@ export default function FinanzasStatsPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="bg-surface rounded-xl p-6 border border-border">
                   <h3 className="text-lg font-semibold mb-4">Mes Actual</h3>
+                  <p className="text-xs text-muted mb-2">Egresos = completados (no incluye pendientes)</p>
                   <div className="space-y-2">
                     <div className="flex justify-between">
                       <span className="text-muted">Ingresos:</span>
@@ -546,6 +680,7 @@ export default function FinanzasStatsPage() {
 
                 <div className="bg-surface rounded-xl p-6 border border-border">
                   <h3 className="text-lg font-semibold mb-4">Mes Anterior</h3>
+                  <p className="text-xs text-muted mb-2">Egresos = completados (no incluye pendientes)</p>
                   <div className="space-y-2">
                     <div className="flex justify-between">
                       <span className="text-muted">Ingresos:</span>

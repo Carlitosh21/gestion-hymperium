@@ -32,7 +32,7 @@ export async function POST() {
     }
     // Si no hay admin, permitir ejecutar migraciones (setup inicial)
     // Ejecutar migraciones en orden
-    const migrations = ['001_initial_schema.sql', '002_auth.sql', '003_leads_pipeline.sql', '004_videos_youtube_metrics.sql', '005_seguimientos.sql', '006_ideas_contenido_long_short_programado.sql', '007_onboarding_titulo_descripcion.sql', '008_onboarding_json_y_unique.sql', '009_fix_ideas_contenido_document_id_constraint.sql', '010_ideas_contenido_reels_guion.sql', '011_lead_estado_eventos.sql', '012_oferta_servicios.sql', '013_seguimientos_envios_no_repeat.sql']
+    const migrations = ['001_initial_schema.sql', '002_auth.sql', '003_leads_pipeline.sql', '004_videos_youtube_metrics.sql', '005_seguimientos.sql', '006_ideas_contenido_long_short_programado.sql', '007_onboarding_titulo_descripcion.sql', '008_onboarding_json_y_unique.sql', '009_fix_ideas_contenido_document_id_constraint.sql', '010_ideas_contenido_reels_guion.sql', '011_lead_estado_eventos.sql', '012_oferta_servicios.sql', '013_seguimientos_envios_no_repeat.sql', '014_egresos_estado.sql']
     
     for (const migrationFile of migrations) {
       const migrationPath = join(process.cwd(), 'migrations', migrationFile)

@@ -11,25 +11,55 @@ export async function PATCH(
   try {
     await requireInternalSession()
     const body = await request.json()
-    const { monto, descripcion, categoria, proyecto_id, fecha } = body
+    const { monto, descripcion, categoria, proyecto_id, fecha, estado } = body
 
+    const updates: string[] = []
+    const values: unknown[] = []
+    let idx = 1
+
+    if (monto !== undefined) {
+      updates.push(`monto = $${idx}`)
+      values.push(monto)
+      idx++
+    }
+    if (descripcion !== undefined) {
+      updates.push(`descripcion = $${idx}`)
+      values.push(descripcion)
+      idx++
+    }
+    if (categoria !== undefined) {
+      updates.push(`categoria = $${idx}`)
+      values.push(categoria)
+      idx++
+    }
+    if (proyecto_id !== undefined) {
+      updates.push(`proyecto_id = $${idx}`)
+      values.push(proyecto_id || null)
+      idx++
+    }
+    if (fecha !== undefined) {
+      updates.push(`fecha = $${idx}`)
+      values.push(fecha || new Date().toISOString())
+      idx++
+    }
+    if (estado !== undefined) {
+      updates.push(`estado = $${idx}`)
+      values.push(estado === 'pendiente' ? 'pendiente' : 'completado')
+      idx++
+    }
+
+    if (updates.length === 0) {
+      const existing = await query('SELECT * FROM egresos WHERE id = $1', [params.id])
+      if (existing.rows.length === 0) {
+        return NextResponse.json({ error: 'Egreso no encontrado' }, { status: 404 })
+      }
+      return NextResponse.json(existing.rows[0])
+    }
+
+    values.push(params.id)
     const result = await query(
-      `UPDATE egresos SET
-        monto = $1,
-        descripcion = $2,
-        categoria = $3,
-        proyecto_id = $4,
-        fecha = $5
-      WHERE id = $6
-      RETURNING *`,
-      [
-        monto,
-        descripcion,
-        categoria,
-        proyecto_id || null,
-        fecha || new Date().toISOString(),
-        params.id,
-      ]
+      `UPDATE egresos SET ${updates.join(', ')} WHERE id = $${idx} RETURNING *`,
+      values
     )
 
     if (result.rows.length === 0) {

@@ -24,6 +24,7 @@ interface Egreso {
   categoria: string
   proyecto_id: number | null
   fecha: string
+  estado?: string
 }
 
 interface Categoria {
@@ -671,6 +672,7 @@ const emptyEgresoForm = {
   categoria: '',
   proyecto_id: '',
   fecha: new Date().toISOString().slice(0, 10),
+  estado: 'completado' as const,
 }
 
 function EgresosTab({
@@ -699,6 +701,7 @@ function EgresosTab({
         categoria: editEgreso.categoria,
         proyecto_id: editEgreso.proyecto_id ? String(editEgreso.proyecto_id) : '',
         fecha: editEgreso.fecha ? editEgreso.fecha.slice(0, 10) : new Date().toISOString().slice(0, 10),
+        estado: (editEgreso.estado === 'pendiente' ? 'pendiente' : 'completado') as 'pendiente' | 'completado',
       })
     } else if (!showForm) {
       setFormData(emptyEgresoForm)
@@ -714,6 +717,7 @@ function EgresosTab({
         categoria: formData.categoria,
         proyecto_id: formData.proyecto_id ? parseInt(formData.proyecto_id) : null,
         fecha: formData.fecha || new Date().toISOString(),
+        estado: formData.estado,
       }
 
       const url = editEgreso
@@ -839,6 +843,17 @@ function EgresosTab({
                 className="w-full px-4 py-2 border border-border rounded-lg bg-background"
               />
             </div>
+            <div>
+              <label className="block text-sm font-medium mb-2">Estado</label>
+              <select
+                value={formData.estado}
+                onChange={(e) => setFormData({ ...formData, estado: e.target.value as 'pendiente' | 'completado' })}
+                className="w-full px-4 py-2 border border-border rounded-lg bg-background"
+              >
+                <option value="pendiente">Pendiente</option>
+                <option value="completado">Completado</option>
+              </select>
+            </div>
           </div>
           <button
             type="submit"
@@ -860,6 +875,15 @@ function EgresosTab({
                   <p className="font-medium text-red-600">{formatCurrency(egreso.monto)}</p>
                   <p className="text-sm text-muted mt-1">{egreso.descripcion}</p>
                   <p className="text-xs text-muted mt-1">Categoría: {egreso.categoria}</p>
+                  <span
+                    className={`inline-block mt-2 px-2 py-0.5 rounded text-xs font-medium ${
+                      (egreso.estado || 'completado') === 'pendiente'
+                        ? 'bg-amber-100 text-amber-800'
+                        : 'bg-green-100 text-green-800'
+                    }`}
+                  >
+                    {(egreso.estado || 'completado') === 'pendiente' ? 'Pendiente' : 'Completado'}
+                  </span>
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="text-sm text-muted">
