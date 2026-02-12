@@ -144,6 +144,8 @@ N8N_IDEAS_URL=https://tu-n8n.com/webhook/ideas
 N8N_VIDEOS_URL=https://tu-n8n.com/webhook/videos
 N8N_CHAT_URL=https://tu-n8n.com/webhook/chat
 N8N_DERIVAR_URL=https://tu-n8n.com/webhook/derivar
+N8N_SETTER_APAGAR_URL=https://tu-n8n.com/webhook/apagar
+N8N_SETTER_STATUS_URL=https://tu-n8n.com/webhook/status
 ```
 
 ### Paso 7: Configurar Dominio y Proxy
