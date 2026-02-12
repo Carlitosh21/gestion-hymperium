@@ -37,6 +37,9 @@ interface Categoria {
   monto_disponible?: number
 }
 
+type EgresoEstado = 'pendiente' | 'completado'
+type EgresoFormData = { monto: string; descripcion: string; categoria: string; proyecto_id: string; fecha: string; estado: EgresoEstado }
+
 interface Billetera {
   total_ingresos: number
   total_ingresos_hymperium: number
@@ -666,13 +669,13 @@ function IngresosTab({
   )
 }
 
-const emptyEgresoForm = {
+const emptyEgresoForm: EgresoFormData = {
   monto: '',
   descripcion: '',
   categoria: '',
   proyecto_id: '',
   fecha: new Date().toISOString().slice(0, 10),
-  estado: 'completado' as const,
+  estado: 'completado',
 }
 
 function EgresosTab({
@@ -691,7 +694,7 @@ function EgresosTab({
   onRefresh: () => void
 }) {
   const [editEgreso, setEditEgreso] = useState<Egreso | null>(null)
-  const [formData, setFormData] = useState(emptyEgresoForm)
+  const [formData, setFormData] = useState<EgresoFormData>(emptyEgresoForm)
 
   useEffect(() => {
     if (editEgreso) {
@@ -701,7 +704,7 @@ function EgresosTab({
         categoria: editEgreso.categoria,
         proyecto_id: editEgreso.proyecto_id ? String(editEgreso.proyecto_id) : '',
         fecha: editEgreso.fecha ? editEgreso.fecha.slice(0, 10) : new Date().toISOString().slice(0, 10),
-        estado: (editEgreso.estado === 'pendiente' ? 'pendiente' : 'completado') as 'pendiente' | 'completado',
+        estado: editEgreso.estado === 'pendiente' ? 'pendiente' : 'completado',
       })
     } else if (!showForm) {
       setFormData(emptyEgresoForm)
