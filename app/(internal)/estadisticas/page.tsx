@@ -1,7 +1,7 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { TrendingUp, Users, Phone, DollarSign, Video, BarChart3 } from 'lucide-react'
+import { TrendingUp, Users, Video } from 'lucide-react'
 
 export default function EstadisticasPage() {
   const router = useRouter()
@@ -24,15 +24,6 @@ export default function EstadisticasPage() {
       color: 'bg-green-500',
       href: '#',
       available: false,
-    },
-    {
-      id: 'finanzas',
-      title: 'Finanzas',
-      description: 'Ingresos, egresos y billetera',
-      icon: DollarSign,
-      color: 'bg-emerald-500',
-      href: '/estadisticas/finanzas',
-      available: true,
     },
     {
       id: 'contenido',

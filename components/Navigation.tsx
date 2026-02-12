@@ -2,16 +2,14 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Home, Target, Users, BarChart3, TrendingUp, DollarSign, Layers, Settings, MessageCircle, ToggleLeft } from 'lucide-react'
+import { Home, Target, Users, BarChart3, FileText, MessageCircle, ToggleLeft, Settings } from 'lucide-react'
 
 const menuItems = [
   { href: '/', label: 'Inicio', icon: Home },
   { href: '/leads', label: 'Leads', icon: Target },
   { href: '/clientes', label: 'Clientes', icon: Users },
   { href: '/estadisticas', label: 'Estadísticas', icon: BarChart3 },
-  { href: '/proyecciones', label: 'Proyecciones', icon: TrendingUp },
-  { href: '/gestion-interna/finanzas', label: 'Finanzas', icon: DollarSign },
-  { href: '/oferta-servicios', label: 'Oferta y Servicios', icon: Layers },
+  { href: '/ctas', label: "CTA's", icon: FileText },
   { href: '/chat', label: 'Chat', icon: MessageCircle },
   { href: '/interruptor', label: 'Interruptor', icon: ToggleLeft },
   { href: '/gestion-interna', label: 'Gestión Interna', icon: Settings },

@@ -2,10 +2,12 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, MessageSquare, Send, Link2, Users, TrendingUp, RefreshCw, BarChart3, AlertCircle, ThumbsDown, FileText } from 'lucide-react'
+import { ArrowLeft, MessageSquare, Send, Link2, Users, TrendingUp, RefreshCw, BarChart3, AlertCircle, ThumbsDown, FileText, DollarSign } from 'lucide-react'
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 
 interface SetterStats {
+  costoMesActualUsd: number
+  costoDiario: Array<{ dia: string; costo_diario_usd: number }>
   dailyStats: Array<{
     dia: string
     mensajes_entrantes: number
@@ -27,8 +29,8 @@ interface SetterStats {
     nuevos_leads: number
     ventas: number
   }
-  doloresRanking: Array<{ tipo_dolor: string; count: number }>
-  objecionesRanking: Array<{ tipo_objecion: string; count: number }>
+  doloresRanking: Array<{ dolor_normalizado: string; cantidad: number }>
+  objecionesRanking: Array<{ objecion_limpia: string; cantidad: number }>
   ctasList: Array<{ accionable: string; detalles: string; recurso: string }>
 }
 
@@ -120,6 +122,37 @@ export default function SetterStatsPage() {
 
       {!loading && !error && stats && (
         <>
+          {/* Costímetro y costo diario */}
+          <section className="mb-12">
+            <h2 className="text-2xl font-semibold mb-6">Costes (API)</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+              <div className="bg-surface rounded-xl p-6 border border-border">
+                <div className="flex items-center justify-between mb-2">
+                  <DollarSign className="w-5 h-5 text-emerald-500" />
+                  <span className="text-2xl font-bold text-emerald-500">
+                    ${stats.costoMesActualUsd.toFixed(2)} USD
+                  </span>
+                </div>
+                <p className="text-sm text-muted">Costo mensual actual</p>
+                <p className="text-xs text-muted mt-1">mensajes_salientes × 0.018</p>
+              </div>
+            </div>
+            {stats.costoDiario.length > 0 && (
+              <div className="bg-surface rounded-xl p-6 border border-border">
+                <h3 className="text-lg font-semibold mb-4">Costo diario (USD)</h3>
+                <ResponsiveContainer width="100%" height={250}>
+                  <BarChart data={stats.costoDiario}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                    <XAxis dataKey="dia" stroke="hsl(var(--muted-foreground))" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }} />
+                    <YAxis stroke="hsl(var(--muted-foreground))" tick={{ fill: 'hsl(var(--muted-foreground))' }} />
+                    <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--surface))', border: '1px solid hsl(var(--border))', borderRadius: '8px' }} />
+                    <Bar dataKey="costo_diario_usd" fill="hsl(var(--accent))" name="USD" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+          </section>
+
           {/* KPIs principales */}
           <section className="mb-12">
             <h2 className="text-2xl font-semibold mb-6">Resumen del período</h2>
@@ -229,9 +262,9 @@ export default function SetterStatsPage() {
                     <BarChart data={stats.doloresRanking} layout="vertical" margin={{ left: 20 }}>
                       <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                       <XAxis type="number" stroke="hsl(var(--muted-foreground))" tick={{ fill: 'hsl(var(--muted-foreground))' }} />
-                      <YAxis type="category" dataKey="tipo_dolor" width={120} stroke="hsl(var(--muted-foreground))" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }} />
+                      <YAxis type="category" dataKey="dolor_normalizado" width={140} stroke="hsl(var(--muted-foreground))" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} />
                       <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--surface))', border: '1px solid hsl(var(--border))', borderRadius: '8px' }} />
-                      <Bar dataKey="count" fill="#f59e0b" name="Cantidad" radius={[0, 4, 4, 0]} />
+                      <Bar dataKey="cantidad" fill="#f59e0b" name="Cantidad" radius={[0, 4, 4, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
                 )}
@@ -250,9 +283,9 @@ export default function SetterStatsPage() {
                     <BarChart data={stats.objecionesRanking} layout="vertical" margin={{ left: 20 }}>
                       <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                       <XAxis type="number" stroke="hsl(var(--muted-foreground))" tick={{ fill: 'hsl(var(--muted-foreground))' }} />
-                      <YAxis type="category" dataKey="tipo_objecion" width={120} stroke="hsl(var(--muted-foreground))" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }} />
+                      <YAxis type="category" dataKey="objecion_limpia" width={180} stroke="hsl(var(--muted-foreground))" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} />
                       <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--surface))', border: '1px solid hsl(var(--border))', borderRadius: '8px' }} />
-                      <Bar dataKey="count" fill="#ef4444" name="Cantidad" radius={[0, 4, 4, 0]} />
+                      <Bar dataKey="cantidad" fill="#ef4444" name="Cantidad" radius={[0, 4, 4, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
                 )}

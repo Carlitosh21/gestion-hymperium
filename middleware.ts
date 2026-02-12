@@ -43,7 +43,7 @@ export async function middleware(request: NextRequest) {
   // Rutas internas (requieren cookie de sesión - validación real en layouts y API handlers)
   if (pathname.startsWith('/api/') || pathname === '/' || 
       pathname.startsWith('/leads') || pathname.startsWith('/clientes') ||
-      pathname.startsWith('/estadisticas') || pathname.startsWith('/proyecciones') ||
+      pathname.startsWith('/estadisticas') || pathname.startsWith('/ctas') ||
       pathname.startsWith('/chat') || pathname.startsWith('/interruptor') ||
       pathname.startsWith('/gestion-interna')) {
     

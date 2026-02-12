@@ -8,11 +8,11 @@ export async function GET() {
   try {
     await requireInternalSession()
     const result = await query(
-      'SELECT * FROM egresos ORDER BY fecha DESC, created_at DESC'
+      'SELECT id, accionable, detalles, recurso FROM ctas ORDER BY id ASC'
     )
     return NextResponse.json(result.rows)
   } catch (error: any) {
-    console.error('Error al obtener egresos:', error)
+    console.error('Error al obtener CTAs:', error)
     return NextResponse.json(
       { error: error.message },
       { status: 500 }
@@ -24,27 +24,18 @@ export async function POST(request: Request) {
   try {
     await requireInternalSession()
     const body = await request.json()
-    const { monto, descripcion, categoria, proyecto_id, fecha, estado } = body
-
-    const estadoVal = estado === 'pendiente' ? 'pendiente' : 'completado'
+    const { accionable, detalles, recurso } = body
 
     const result = await query(
-      `INSERT INTO egresos (monto, descripcion, categoria, proyecto_id, fecha, estado)
-       VALUES ($1, $2, $3, $4, $5, $6)
+      `INSERT INTO ctas (accionable, detalles, recurso)
+       VALUES ($1, $2, $3)
        RETURNING *`,
-      [
-        monto,
-        descripcion,
-        categoria,
-        proyecto_id || null,
-        fecha || new Date().toISOString(),
-        estadoVal,
-      ]
+      [accionable || '', detalles || '', recurso || '']
     )
 
     return NextResponse.json(result.rows[0])
   } catch (error: any) {
-    console.error('Error al crear egreso:', error)
+    console.error('Error al crear CTA:', error)
     return NextResponse.json(
       { error: error.message },
       { status: 500 }
