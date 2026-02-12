@@ -104,7 +104,7 @@ export default function DashboardPage() {
       )}
 
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-800 rounded-xl p-6 mb-8">
+        <div className="bg-red-500/10 border border-red-500/30 text-red-500 rounded-xl p-6 mb-8">
           <p className="font-medium">Error: {error}</p>
         </div>
       )}
@@ -163,19 +163,19 @@ export default function DashboardPage() {
                 <p className="text-sm text-muted">Links Skool enviados</p>
               </div>
               <div className="bg-surface rounded-xl p-6 border border-border">
-                <span className="text-2xl font-bold text-gray-600">
+                <span className="text-2xl font-bold text-muted">
                   {formatNumber(stats.totals.derivaciones)}
                 </span>
                 <p className="text-sm text-muted">Derivaciones</p>
               </div>
               <div className="bg-surface rounded-xl p-6 border border-border">
-                <span className="text-2xl font-bold text-gray-600">
+                <span className="text-2xl font-bold text-muted">
                   {formatNumber(stats.totals.ctas_enviados)}
                 </span>
                 <p className="text-sm text-muted">CTAs enviados</p>
               </div>
               <div className="bg-surface rounded-xl p-6 border border-border">
-                <span className="text-2xl font-bold text-gray-600">
+                <span className="text-2xl font-bold text-muted">
                   {formatNumber(stats.totals.links_whatsapp)}
                 </span>
                 <p className="text-sm text-muted">Links WhatsApp</p>

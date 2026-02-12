@@ -250,14 +250,14 @@ export default function CtasPage() {
                       <td className="py-2 px-4 text-right">
                         <button
                           onClick={saveEdit}
-                          className="p-2 text-green-600 hover:bg-surface rounded"
+                          className="p-2 text-emerald-500 hover:bg-surface-elevated rounded transition-colors"
                           title="Guardar"
                         >
                           <Check className="w-4 h-4" />
                         </button>
                         <button
                           onClick={discardEdit}
-                          className="p-2 text-muted hover:bg-surface rounded"
+                          className="p-2 text-muted hover:bg-surface-elevated rounded transition-colors"
                           title="Descartar"
                         >
                           <X className="w-4 h-4" />
@@ -285,14 +285,14 @@ export default function CtasPage() {
                       <td className="py-3 px-4 text-right">
                         <button
                           onClick={() => startEdit(cta)}
-                          className="p-2 text-muted hover:bg-surface rounded"
+                          className="p-2 text-muted hover:bg-surface-elevated rounded transition-colors"
                           title="Editar"
                         >
                           <Pencil className="w-4 h-4" />
                         </button>
                         <button
                           onClick={() => handleDelete(cta.id)}
-                          className="p-2 text-red-500 hover:bg-surface rounded"
+                          className="p-2 text-red-500 hover:bg-surface-elevated rounded transition-colors"
                           title="Borrar"
                         >
                           <Trash2 className="w-4 h-4" />

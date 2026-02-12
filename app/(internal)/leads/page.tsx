@@ -20,7 +20,7 @@ import {
   useSortable,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { GripVertical, Pencil, Trash2, Search, ExternalLink, UserPlus } from 'lucide-react'
+import { GripVertical, Pencil, Trash2, Search, ExternalLink, UserPlus, Info } from 'lucide-react'
 
 interface Lead {
   id: number
@@ -86,7 +86,7 @@ function LeadEditModal({ lead, onClose, onSave }: LeadEditModalProps) {
         <h2 className="text-xl font-semibold mb-4">Editar Lead</h2>
 
         {error && (
-          <div className="mb-4 p-3 bg-red-50 text-red-800 rounded-lg border border-red-200 text-sm">
+          <div className="mb-4 p-3 bg-red-500/10 text-red-500 rounded-lg border border-red-500/30 text-sm">
             {error}
           </div>
         )}
@@ -137,12 +137,16 @@ function LeadEditModal({ lead, onClose, onSave }: LeadEditModalProps) {
 
 function LeadCard({
   lead,
+  isActionsOpen,
+  onToggleActions,
   onEdit,
   onDelete,
   onDerivar,
   onOpenInstagram,
 }: {
   lead: Lead
+  isActionsOpen: boolean
+  onToggleActions: () => void
   onEdit: (lead: Lead) => void
   onDelete: (lead: Lead) => void
   onDerivar: (lead: Lead) => void
@@ -176,11 +180,17 @@ function LeadCard({
 
   const displayName = lead.username ? `@${lead.username}` : lead.nombre || 'Sin nombre'
 
+  const runAndClose = (fn: () => void) => {
+    fn()
+    onToggleActions()
+  }
+
   return (
     <div
       ref={setNodeRef}
       style={style}
-      className="p-3 bg-surface-elevated rounded-lg border border-border hover:bg-surface transition-colors cursor-grab active:cursor-grabbing"
+      data-lead-card={lead.id}
+      className="p-3 bg-surface-elevated rounded-lg border border-border hover:bg-surface transition-colors cursor-grab active:cursor-grabbing relative"
     >
       <div className="flex items-start gap-2">
         <div {...attributes} {...listeners} className="mt-1 cursor-grab active:cursor-grabbing">
@@ -195,50 +205,69 @@ function LeadCard({
             Última interacción: {formatFecha(lead.ultima_interaccion)}
           </div>
         </div>
-        <div className="flex items-center gap-1">
+        <div className="relative flex items-center">
           <button
             onClick={(e) => {
               e.stopPropagation()
-              if (lead.username) onOpenInstagram(lead.username)
-            }}
-            disabled={!lead.username}
-            className="p-1.5 hover:bg-surface rounded transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-            title={lead.username ? 'Abrir perfil de Instagram' : 'Sin usuario'}
-          >
-            <ExternalLink className="w-4 h-4 text-muted" />
-          </button>
-          <button
-            onClick={(e) => {
-              e.stopPropagation()
-              onEdit(lead)
+              onToggleActions()
             }}
             className="p-1.5 hover:bg-surface rounded transition-colors"
-            title="Editar lead"
+            title="Acciones"
           >
-            <Pencil className="w-4 h-4 text-muted" />
+            <Info className="w-4 h-4 text-muted" />
           </button>
-          {lead.manychat_id && lead.estado !== 'Derivado' && (
-            <button
-              onClick={(e) => {
-                e.stopPropagation()
-                onDerivar(lead)
-              }}
-              className="p-1.5 hover:bg-surface rounded transition-colors"
-              title="Derivar"
+          {isActionsOpen && (
+            <div
+              data-lead-actions-popover
+              className="absolute right-0 top-full mt-1 z-50 min-w-[160px] py-1 bg-surface border border-border rounded-lg shadow-lg"
+              onClick={(e) => e.stopPropagation()}
             >
-              <UserPlus className="w-4 h-4 text-muted" />
-            </button>
+              {lead.username && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    runAndClose(() => onOpenInstagram(lead.username))
+                  }}
+                  className="w-full px-4 py-2 text-left text-sm hover:bg-surface-elevated flex items-center gap-2"
+                >
+                  <ExternalLink className="w-4 h-4 text-muted" />
+                  Abrir Instagram
+                </button>
+              )}
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  runAndClose(() => onEdit(lead))
+                }}
+                className="w-full px-4 py-2 text-left text-sm hover:bg-surface-elevated flex items-center gap-2"
+              >
+                <Pencil className="w-4 h-4 text-muted" />
+                Editar
+              </button>
+              {lead.manychat_id && lead.estado !== 'Derivado' && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    runAndClose(() => onDerivar(lead))
+                  }}
+                  className="w-full px-4 py-2 text-left text-sm hover:bg-surface-elevated flex items-center gap-2"
+                >
+                  <UserPlus className="w-4 h-4 text-muted" />
+                  Derivar
+                </button>
+              )}
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  runAndClose(() => onDelete(lead))
+                }}
+                className="w-full px-4 py-2 text-left text-sm hover:bg-surface-elevated flex items-center gap-2 text-red-500"
+              >
+                <Trash2 className="w-4 h-4" />
+                Borrar
+              </button>
+            </div>
           )}
-          <button
-            onClick={(e) => {
-              e.stopPropagation()
-              onDelete(lead)
-            }}
-            className="p-1.5 hover:bg-surface rounded transition-colors"
-            title="Borrar lead"
-          >
-            <Trash2 className="w-4 h-4 text-muted" />
-          </button>
         </div>
       </div>
     </div>
@@ -248,6 +277,8 @@ function LeadCard({
 function Column({
   estado,
   leads,
+  openActionsLeadId,
+  onToggleActions,
   onEditLead,
   onDeleteLead,
   onDerivar,
@@ -255,6 +286,8 @@ function Column({
 }: {
   estado: { id: string; label: string; color: string }
   leads: Lead[]
+  openActionsLeadId: number | null
+  onToggleActions: (leadId: number) => void
   onEditLead: (lead: Lead) => void
   onDeleteLead: (lead: Lead) => void
   onDerivar: (lead: Lead) => void
@@ -284,6 +317,8 @@ function Column({
                 <LeadCard
                   key={lead.id}
                   lead={lead}
+                  isActionsOpen={openActionsLeadId === lead.id}
+                  onToggleActions={() => onToggleActions(lead.id)}
                   onEdit={onEditLead}
                   onDelete={onDeleteLead}
                   onDerivar={onDerivar}
@@ -303,7 +338,24 @@ export default function LeadsPage() {
   const [loading, setLoading] = useState(true)
   const [activeId, setActiveId] = useState<string | null>(null)
   const [editLead, setEditLead] = useState<Lead | null>(null)
+  const [openActionsLeadId, setOpenActionsLeadId] = useState<number | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
+
+  const toggleActions = (leadId: number) => {
+    setOpenActionsLeadId((prev) => (prev === leadId ? null : leadId))
+  }
+
+  useEffect(() => {
+    if (openActionsLeadId === null) return
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as HTMLElement
+      if (!target.closest('[data-lead-actions-popover]') && !target.closest(`[data-lead-card="${openActionsLeadId}"]`)) {
+        setOpenActionsLeadId(null)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [openActionsLeadId])
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -483,6 +535,8 @@ export default function LeadsPage() {
                   key={estado.id}
                   estado={estado}
                   leads={leadsByEstado[estado.id] || []}
+                  openActionsLeadId={openActionsLeadId}
+                  onToggleActions={toggleActions}
                   onEditLead={setEditLead}
                   onDeleteLead={handleDeleteLead}
                   onDerivar={handleDerivar}

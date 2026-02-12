@@ -224,9 +224,9 @@ export default function PortalPage() {
                           </div>
                         </div>
                         <span className={`px-3 py-1 text-xs rounded-lg ${
-                          tarea.estado === 'completada' ? 'bg-green-600 text-white' :
-                          tarea.estado === 'en_progreso' ? 'bg-blue-600 text-white' :
-                          'bg-gray-300 text-gray-700'
+                          tarea.estado === 'completada' ? 'bg-emerald-500/20 text-emerald-500 border border-emerald-500/30' :
+                          tarea.estado === 'en_progreso' ? 'bg-blue-500/20 text-blue-500 border border-blue-500/30' :
+                          'bg-surface-elevated text-muted border border-border'
                         }`}>
                           {tarea.estado === 'completada' ? 'Completada' :
                            tarea.estado === 'en_progreso' ? 'En Progreso' :
