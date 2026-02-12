@@ -21,24 +21,24 @@ export async function GET(request: Request) {
     let rows: any[] = []
 
     try {
-      // Intentar filtrar por session_id (estructura típica de n8n/LangChain)
+      // Esquema: id, session_id, message (manychat_id del lead = session_id en historial)
       const result = await query(
-        `SELECT id, session_id, message, created_at, "timestamp"
+        `SELECT id, session_id, message
          FROM n8n_chat_histories
          WHERE session_id = $1
-         ORDER BY COALESCE(id, 0) ASC`,
+         ORDER BY id ASC`,
         [manychatId.trim()]
       )
       rows = result.rows || []
     } catch (err: any) {
-      if (err.code === '42703') {
+      if (err.code === '42703' && err.message?.includes('session_id')) {
         // Columna session_id inexistente, intentar con manychat_id
         try {
           const result = await query(
-            `SELECT id, manychat_id, message, created_at, "timestamp"
+            `SELECT id, manychat_id, message
              FROM n8n_chat_histories
              WHERE manychat_id = $1
-             ORDER BY COALESCE(id, 0) ASC`,
+             ORDER BY id ASC`,
             [manychatId.trim()]
           )
           rows = result.rows || []
