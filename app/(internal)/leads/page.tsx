@@ -20,7 +20,8 @@ import {
   useSortable,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { GripVertical, Pencil, Trash2, Search, ExternalLink, UserPlus, Info } from 'lucide-react'
+import { GripVertical, Pencil, Trash2, Search, ExternalLink, UserPlus, Info, MessageCircle } from 'lucide-react'
+import { ChatModal } from '@/components/ChatModal'
 
 interface Lead {
   id: number
@@ -143,6 +144,7 @@ function LeadCard({
   onDelete,
   onDerivar,
   onOpenInstagram,
+  onLeerConversacion,
 }: {
   lead: Lead
   isActionsOpen: boolean
@@ -151,6 +153,7 @@ function LeadCard({
   onDelete: (lead: Lead) => void
   onDerivar: (lead: Lead) => void
   onOpenInstagram: (username: string | null) => void
+  onLeerConversacion: (lead: Lead) => void
 }) {
   const {
     attributes,
@@ -237,6 +240,16 @@ function LeadCard({
               <button
                 onClick={(e) => {
                   e.stopPropagation()
+                  runAndClose(() => onLeerConversacion(lead))
+                }}
+                className="w-full px-4 py-2 text-left text-sm hover:bg-surface-elevated flex items-center gap-2"
+              >
+                <MessageCircle className="w-4 h-4 text-muted" />
+                Leer Conversación
+              </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
                   runAndClose(() => onEdit(lead))
                 }}
                 className="w-full px-4 py-2 text-left text-sm hover:bg-surface-elevated flex items-center gap-2"
@@ -283,6 +296,7 @@ function Column({
   onDeleteLead,
   onDerivar,
   onOpenInstagram,
+  onLeerConversacion,
 }: {
   estado: { id: string; label: string; color: string }
   leads: Lead[]
@@ -292,6 +306,7 @@ function Column({
   onDeleteLead: (lead: Lead) => void
   onDerivar: (lead: Lead) => void
   onOpenInstagram: (username: string | null) => void
+  onLeerConversacion: (lead: Lead) => void
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: estado.id })
 
@@ -323,6 +338,7 @@ function Column({
                   onDelete={onDeleteLead}
                   onDerivar={onDerivar}
                   onOpenInstagram={onOpenInstagram}
+                  onLeerConversacion={onLeerConversacion}
                 />
               ))
             )}
@@ -340,6 +356,10 @@ export default function LeadsPage() {
   const [editLead, setEditLead] = useState<Lead | null>(null)
   const [openActionsLeadId, setOpenActionsLeadId] = useState<number | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
+  const [chatModalLead, setChatModalLead] = useState<Lead | null>(null)
+  const [chatHistory, setChatHistory] = useState<any>(null)
+  const [chatLoading, setChatLoading] = useState(false)
+  const [chatError, setChatError] = useState<string | null>(null)
 
   const toggleActions = (leadId: number) => {
     setOpenActionsLeadId((prev) => (prev === leadId ? null : leadId))
@@ -481,6 +501,32 @@ export default function LeadsPage() {
     window.open(`https://instagram.com/${username}`, '_blank')
   }
 
+  const handleLeerConversacion = async (lead: Lead) => {
+    if (!lead.manychat_id) {
+      alert('Lead sin ManyChat ID')
+      return
+    }
+    setChatModalLead(lead)
+    setChatHistory(null)
+    setChatError(null)
+    setChatLoading(true)
+
+    try {
+      const res = await fetch(`/api/conversacion?manychatId=${encodeURIComponent(lead.manychat_id)}`)
+      const data = await res.json()
+
+      if (!res.ok) {
+        throw new Error(data.error || 'Error al cargar conversación')
+      }
+
+      setChatHistory(data.chatHistory)
+    } catch (err: any) {
+      setChatError(err.message || 'Error al cargar conversación')
+    } finally {
+      setChatLoading(false)
+    }
+  }
+
   const filteredLeads = searchTerm.trim()
     ? leads.filter((l) => {
         const u = (l.username || '').toLowerCase()
@@ -541,6 +587,7 @@ export default function LeadsPage() {
                   onDeleteLead={handleDeleteLead}
                   onDerivar={handleDerivar}
                   onOpenInstagram={openInstagram}
+                  onLeerConversacion={handleLeerConversacion}
                 />
               ))}
             </div>
@@ -562,6 +609,16 @@ export default function LeadsPage() {
           lead={editLead}
           onClose={() => setEditLead(null)}
           onSave={handleEditLead}
+        />
+      )}
+
+      {chatModalLead && (
+        <ChatModal
+          lead={chatModalLead}
+          onClose={() => setChatModalLead(null)}
+          chatHistory={chatHistory}
+          loading={chatLoading}
+          error={chatError}
         />
       )}
     </div>
