@@ -21,7 +21,10 @@ export async function PATCH(
       porcentaje_joaco,
       porcentaje_hymperium,
       fecha,
+      estado,
     } = body
+
+    const estadoVal = estado !== undefined ? (estado === 'pendiente' ? 'pendiente' : 'completado') : undefined
 
     const result = await query(
       `UPDATE ingresos SET
@@ -33,8 +36,9 @@ export async function PATCH(
         porcentaje_carlitos = $6,
         porcentaje_joaco = $7,
         porcentaje_hymperium = $8,
-        fecha = $9
-      WHERE id = $10
+        fecha = $9,
+        estado = COALESCE($10, estado)
+      WHERE id = $11
       RETURNING *`,
       [
         monto,
@@ -46,6 +50,7 @@ export async function PATCH(
         porcentaje_joaco ?? 0,
         porcentaje_hymperium ?? 0,
         fecha || new Date().toISOString(),
+        estadoVal,
         params.id,
       ]
     )

@@ -34,14 +34,17 @@ export async function POST(request: Request) {
       porcentaje_joaco,
       porcentaje_hymperium,
       fecha,
+      estado,
     } = body
+
+    const estadoVal = estado === 'pendiente' ? 'pendiente' : 'completado'
 
     const result = await query(
       `INSERT INTO ingresos (
         monto, descripcion, proyecto_id, tipo_proyecto,
-        pago_desarrollador, porcentaje_carlitos, porcentaje_joaco, porcentaje_hymperium, fecha
+        pago_desarrollador, porcentaje_carlitos, porcentaje_joaco, porcentaje_hymperium, fecha, estado
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
       RETURNING *`,
       [
         monto,
@@ -53,6 +56,7 @@ export async function POST(request: Request) {
         porcentaje_joaco || 0,
         porcentaje_hymperium || 0,
         fecha || new Date().toISOString(),
+        estadoVal,
       ]
     )
 

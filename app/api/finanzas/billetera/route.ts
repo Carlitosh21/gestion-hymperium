@@ -8,18 +8,30 @@ export async function GET() {
   try {
     await requireInternalSession()
 
-    // Total ingresos brutos (para estadísticas, no se muestra en Finanzas)
+    // Total ingresos brutos (solo completados para cuentas reales)
     const ingresosResult = await query(
-      'SELECT COALESCE(SUM(monto), 0) as total FROM ingresos'
+      `SELECT COALESCE(SUM(monto), 0) as total FROM ingresos WHERE COALESCE(estado, 'completado') = 'completado'`
     )
     const totalIngresos = parseFloat(ingresosResult.rows[0].total)
 
-    // Ingresos Hymperium: (monto - pago_desarrollador) * (porcentaje_hymperium / 100)
+    // Ingresos Hymperium (solo completados): (monto - pago_desarrollador) * (porcentaje_hymperium / 100)
     const hymperiumResult = await query(`
       SELECT COALESCE(SUM((monto - COALESCE(pago_desarrollador, 0)) * (COALESCE(porcentaje_hymperium, 0) / 100)), 0) as total
       FROM ingresos
+      WHERE COALESCE(estado, 'completado') = 'completado'
     `)
     const totalIngresosHymperium = parseFloat(hymperiumResult.rows[0].total)
+
+    // Ingresos pendientes (no afectan cuentas reales)
+    const ingresosPendientesResult = await query(
+      `SELECT COALESCE(SUM(monto), 0) as total FROM ingresos WHERE estado = 'pendiente'`
+    )
+    const totalIngresosPendientes = parseFloat(ingresosPendientesResult.rows[0].total)
+    const ingresosHymperiumPendientesResult = await query(`
+      SELECT COALESCE(SUM((monto - COALESCE(pago_desarrollador, 0)) * (COALESCE(porcentaje_hymperium, 0) / 100)), 0) as total
+      FROM ingresos WHERE estado = 'pendiente'
+    `)
+    const totalIngresosHymperiumPendientes = parseFloat(ingresosHymperiumPendientesResult.rows[0].total)
 
     // Total egresos (solo completados para cuentas reales)
     const egresosResult = await query(
@@ -69,6 +81,8 @@ export async function GET() {
     return NextResponse.json({
       total_ingresos: totalIngresos,
       total_ingresos_hymperium: totalIngresosHymperium,
+      total_ingresos_pendientes: totalIngresosPendientes,
+      total_ingresos_hymperium_pendientes: totalIngresosHymperiumPendientes,
       total_egresos: totalEgresos,
       total_egresos_pendientes: totalEgresosPendientes,
       total_disponible: totalDisponible,

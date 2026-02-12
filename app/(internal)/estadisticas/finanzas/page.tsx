@@ -38,6 +38,8 @@ interface StatsData {
   kpis: {
     totalIngresosBrutos: number
     totalIngresosHymperium: number
+    totalIngresosPendientesBrutos: number
+    totalIngresosPendientesHymperium: number
     totalIngresosCarlitos: number
     totalIngresosJoaco: number
     totalPagosDevs: number
@@ -57,7 +59,8 @@ interface StatsData {
   }>
   timeseriesEgresos: Array<{ dia: string; monto: number }>
   timeseriesEgresosPendientes?: Array<{ dia: string; monto: number }>
-  flujoCaja: Array<{ dia: string; ingresos: number; egresos: number; egresos_pendientes?: number }>
+  timeseriesIngresosPendientes?: Array<{ dia: string; bruto: number; hymperium: number }>
+  flujoCaja: Array<{ dia: string; ingresos: number; ingresos_pendientes?: number; egresos: number; egresos_pendientes?: number }>
   egresosPorCategoria: Array<{ categoria: string; total: number; porcentaje: number }>
   topIngresos: Array<{ id: number; descripcion: string; monto: number; hymperium: number; fecha: string }>
   topEgresos: Array<{ id: number; descripcion: string; categoria: string; monto: number; fecha: string }>
@@ -279,25 +282,38 @@ export default function FinanzasStatsPage() {
               <h2 className="text-2xl font-semibold">Indicadores Clave</h2>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-7 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-8 gap-6">
               <div className="bg-surface rounded-xl p-6 border border-border">
                 <div className="flex items-center justify-between mb-2">
                   <TrendingUp className="w-5 h-5 text-blue-500" />
                 </div>
-                <p className="text-sm text-muted">Ingresos Brutos</p>
+                <p className="text-sm text-muted">Ingresos Brutos reales</p>
                 <p className="text-2xl font-bold text-blue-500">
                   {formatCurrency(stats.kpis.totalIngresosBrutos)}
                 </p>
+                <p className="text-xs text-muted mt-1">Completados (suman caja)</p>
               </div>
 
               <div className="bg-surface rounded-xl p-6 border border-border">
                 <div className="flex items-center justify-between mb-2">
                   <DollarSign className="w-5 h-5 text-emerald-500" />
                 </div>
-                <p className="text-sm text-muted">Ingresos Hymperium</p>
+                <p className="text-sm text-muted">Ingresos Hymperium reales</p>
                 <p className="text-2xl font-bold text-emerald-500">
                   {formatCurrency(stats.kpis.totalIngresosHymperium)}
                 </p>
+                <p className="text-xs text-muted mt-1">Completados (suman caja)</p>
+              </div>
+
+              <div className="bg-surface rounded-xl p-6 border border-border">
+                <div className="flex items-center justify-between mb-2">
+                  <TrendingUp className="w-5 h-5 text-amber-500" />
+                </div>
+                <p className="text-sm text-muted">Ingresos pendientes</p>
+                <p className="text-2xl font-bold text-amber-500">
+                  {formatCurrency(stats.kpis.totalIngresosPendientesHymperium ?? 0)}
+                </p>
+                <p className="text-xs text-muted mt-1">No afectan balance</p>
               </div>
 
               <div className="bg-surface rounded-xl p-6 border border-border">
@@ -364,6 +380,7 @@ export default function FinanzasStatsPage() {
               <DollarSign className="w-6 h-6 text-indigo-500" />
               <h2 className="text-2xl font-semibold">Desglose de Ingresos</h2>
             </div>
+            <p className="text-sm text-muted mb-4">Solo ingresos completados (cuentas reales)</p>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               <div className="bg-surface rounded-xl p-6 border border-border">
@@ -402,8 +419,8 @@ export default function FinanzasStatsPage() {
 
             <div className="bg-surface rounded-xl p-6 border border-border">
               <h3 className="text-lg font-semibold mb-4">Ingresos Hymperium vs Egresos ({chartSubtitle})</h3>
-              <p className="text-sm text-muted mb-4">Egresos reales (completados) afectan el balance. Los pendientes se muestran aparte.</p>
-              {stats.flujoCaja.some((d) => d.ingresos > 0 || d.egresos > 0 || (d.egresos_pendientes ?? 0) > 0) ? (
+              <p className="text-sm text-muted mb-4">Solo completados afectan el balance. Ingresos y egresos pendientes se muestran aparte.</p>
+              {stats.flujoCaja.some((d) => d.ingresos > 0 || d.egresos > 0 || (d.ingresos_pendientes ?? 0) > 0 || (d.egresos_pendientes ?? 0) > 0) ? (
                 <ResponsiveContainer width="100%" height={300}>
                   <LineChart data={stats.flujoCaja}>
                     <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.3)" />
@@ -428,8 +445,17 @@ export default function FinanzasStatsPage() {
                       dataKey="ingresos"
                       stroke="#22c55e"
                       strokeWidth={2}
-                      name="Ingresos Hymperium"
+                      name="Ingresos Hymperium (completados)"
                       dot={{ fill: '#22c55e', r: 4 }}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="ingresos_pendientes"
+                      stroke="#eab308"
+                      strokeWidth={2}
+                      strokeDasharray="5 5"
+                      name="Ingresos pendientes"
+                      dot={{ fill: '#eab308', r: 4 }}
                     />
                     <Line
                       type="monotone"
@@ -466,7 +492,7 @@ export default function FinanzasStatsPage() {
             </div>
 
             <div className="bg-surface rounded-xl p-6 border border-border">
-              <h3 className="text-lg font-semibold mb-4">Desglose {chartSubtitle} (Bruto, Hymperium, Carlitos, Joaco, Pagos Devs)</h3>
+              <h3 className="text-lg font-semibold mb-4">Desglose {chartSubtitle} (Bruto, Hymperium, Carlitos, Joaco, Pagos Devs) — solo completados</h3>
               {stats.timeseriesIngresos.some((d) => d.bruto > 0 || d.hymperium > 0) ? (
                 <ResponsiveContainer width="100%" height={300}>
                   <BarChart data={stats.timeseriesIngresos}>
@@ -583,7 +609,7 @@ export default function FinanzasStatsPage() {
 
               <div className="space-y-6">
                 <div className="bg-surface rounded-xl p-6 border border-border">
-                  <h3 className="text-lg font-semibold mb-4">Top Ingresos</h3>
+                  <h3 className="text-lg font-semibold mb-4">Top Ingresos (completados)</h3>
                   {stats.topIngresos.length > 0 ? (
                     <div className="space-y-3">
                       {stats.topIngresos.slice(0, 5).map((ing, idx) => (

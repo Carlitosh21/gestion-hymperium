@@ -15,6 +15,7 @@ interface Ingreso {
   porcentaje_joaco: number
   porcentaje_hymperium: number
   fecha: string
+  estado?: string
 }
 
 interface Egreso {
@@ -40,9 +41,14 @@ interface Categoria {
 type EgresoEstado = 'pendiente' | 'completado'
 type EgresoFormData = { monto: string; descripcion: string; categoria: string; proyecto_id: string; fecha: string; estado: EgresoEstado }
 
+type IngresoEstado = 'pendiente' | 'completado'
+type IngresoFormData = { monto: string; descripcion: string; proyecto_id: string; tipo_proyecto: string; pago_desarrollador: string; porcentaje_carlitos: string; porcentaje_joaco: string; porcentaje_hymperium: string; fecha: string; estado: IngresoEstado }
+
 interface Billetera {
   total_ingresos: number
   total_ingresos_hymperium: number
+  total_ingresos_pendientes?: number
+  total_ingresos_hymperium_pendientes?: number
   total_egresos: number
   total_disponible: number
   total_disponible_hymperium: number
@@ -300,7 +306,7 @@ function BilleteraTab({
   )
 }
 
-const emptyIngresoForm = {
+const emptyIngresoForm: IngresoFormData = {
   monto: '',
   descripcion: '',
   proyecto_id: '',
@@ -310,6 +316,7 @@ const emptyIngresoForm = {
   porcentaje_joaco: '',
   porcentaje_hymperium: '',
   fecha: new Date().toISOString().slice(0, 10),
+  estado: 'completado',
 }
 
 function IngresosTab({
@@ -326,7 +333,7 @@ function IngresosTab({
   onRefresh: () => void
 }) {
   const [editIngreso, setEditIngreso] = useState<Ingreso | null>(null)
-  const [formData, setFormData] = useState(emptyIngresoForm)
+  const [formData, setFormData] = useState<IngresoFormData>(emptyIngresoForm)
   const [duplicateIngreso, setDuplicateIngreso] = useState<Ingreso | null>(null)
   const [duplicateFecha, setDuplicateFecha] = useState('')
   const [duplicateError, setDuplicateError] = useState<string | null>(null)
@@ -343,6 +350,7 @@ function IngresosTab({
         porcentaje_joaco: String(editIngreso.porcentaje_joaco ?? 0),
         porcentaje_hymperium: String(editIngreso.porcentaje_hymperium ?? 0),
         fecha: editIngreso.fecha ? editIngreso.fecha.slice(0, 10) : new Date().toISOString().slice(0, 10),
+        estado: editIngreso.estado === 'pendiente' ? 'pendiente' : 'completado',
       })
     } else if (!showForm) {
       setFormData(emptyIngresoForm)
@@ -362,6 +370,7 @@ function IngresosTab({
         porcentaje_joaco: parseFloat(formData.porcentaje_joaco) || 0,
         porcentaje_hymperium: parseFloat(formData.porcentaje_hymperium) || 0,
         fecha: formData.fecha || new Date().toISOString(),
+        estado: formData.estado,
       }
 
       const url = editIngreso
@@ -430,6 +439,7 @@ function IngresosTab({
         porcentaje_joaco: duplicateIngreso.porcentaje_joaco ?? 0,
         porcentaje_hymperium: duplicateIngreso.porcentaje_hymperium ?? 0,
         fecha: duplicateFecha || new Date().toISOString(),
+        estado: duplicateIngreso.estado === 'pendiente' ? 'pendiente' : 'completado',
       }
 
       const response = await fetch('/api/finanzas/ingresos', {
@@ -491,6 +501,17 @@ function IngresosTab({
                 onChange={(e) => setFormData({ ...formData, fecha: e.target.value })}
                 className="w-full px-4 py-2 border border-border rounded-lg bg-background"
               />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-2">Estado</label>
+              <select
+                value={formData.estado}
+                onChange={(e) => setFormData({ ...formData, estado: e.target.value as IngresoEstado })}
+                className="w-full px-4 py-2 border border-border rounded-lg bg-background"
+              >
+                <option value="completado">Completado</option>
+                <option value="pendiente">Pendiente</option>
+              </select>
             </div>
             <div className="col-span-2">
               <label className="block text-sm font-medium mb-2">Descripción</label>
@@ -583,6 +604,15 @@ function IngresosTab({
                   )}
                 </div>
                 <div className="flex items-center gap-2">
+                  <span
+                    className={`text-xs px-2 py-0.5 rounded-full ${
+                      (ingreso.estado || 'completado') === 'pendiente'
+                        ? 'bg-orange-500/20 text-orange-500'
+                        : 'bg-emerald-500/20 text-emerald-500'
+                    }`}
+                  >
+                    {(ingreso.estado || 'completado') === 'pendiente' ? 'Pendiente' : 'Completado'}
+                  </span>
                   <span className="text-sm text-muted">
                     {new Date(ingreso.fecha).toLocaleDateString('es-ES')}
                   </span>
