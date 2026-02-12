@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { Pencil, Trash2 } from 'lucide-react'
+import { Pencil, Trash2, Copy } from 'lucide-react'
 
 interface Ingreso {
   id: number
@@ -323,6 +323,9 @@ function IngresosTab({
 }) {
   const [editIngreso, setEditIngreso] = useState<Ingreso | null>(null)
   const [formData, setFormData] = useState(emptyIngresoForm)
+  const [duplicateIngreso, setDuplicateIngreso] = useState<Ingreso | null>(null)
+  const [duplicateFecha, setDuplicateFecha] = useState('')
+  const [duplicateError, setDuplicateError] = useState<string | null>(null)
 
   useEffect(() => {
     if (editIngreso) {
@@ -398,6 +401,50 @@ function IngresosTab({
   const openEdit = (ingreso: Ingreso) => {
     setEditIngreso(ingreso)
     setShowForm(true)
+  }
+
+  const openDuplicate = (ingreso: Ingreso) => {
+    setDuplicateIngreso(ingreso)
+    setDuplicateFecha(ingreso.fecha ? ingreso.fecha.slice(0, 10) : new Date().toISOString().slice(0, 10))
+    setDuplicateError(null)
+  }
+
+  const handleDuplicateConfirm = async () => {
+    if (!duplicateIngreso) return
+    const fechaOriginal = duplicateIngreso.fecha ? duplicateIngreso.fecha.slice(0, 10) : ''
+    if (duplicateFecha === fechaOriginal) return
+
+    setDuplicateError(null)
+    try {
+      const payload = {
+        monto: duplicateIngreso.monto,
+        descripcion: duplicateIngreso.descripcion || null,
+        proyecto_id: duplicateIngreso.proyecto_id,
+        tipo_proyecto: duplicateIngreso.tipo_proyecto || null,
+        pago_desarrollador: duplicateIngreso.pago_desarrollador ?? 0,
+        porcentaje_carlitos: duplicateIngreso.porcentaje_carlitos ?? 0,
+        porcentaje_joaco: duplicateIngreso.porcentaje_joaco ?? 0,
+        porcentaje_hymperium: duplicateIngreso.porcentaje_hymperium ?? 0,
+        fecha: duplicateFecha || new Date().toISOString(),
+      }
+
+      const response = await fetch('/api/finanzas/ingresos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+
+      if (response.ok) {
+        setDuplicateIngreso(null)
+        onRefresh()
+      } else {
+        const data = await response.json()
+        setDuplicateError(data.error || 'Error al duplicar ingreso')
+      }
+    } catch (error: any) {
+      console.error('Error al duplicar ingreso:', error)
+      setDuplicateError(error.message || 'Error al duplicar ingreso')
+    }
   }
 
   const cancelForm = () => {
@@ -543,6 +590,13 @@ function IngresosTab({
                     <Pencil className="w-4 h-4 text-muted" />
                   </button>
                   <button
+                    onClick={() => openDuplicate(ingreso)}
+                    className="p-1.5 hover:bg-surface rounded transition-colors"
+                    title="Duplicar"
+                  >
+                    <Copy className="w-4 h-4 text-muted" />
+                  </button>
+                  <button
                     onClick={() => handleDelete(ingreso)}
                     className="p-1.5 hover:bg-surface rounded transition-colors"
                     title="Borrar"
@@ -561,6 +615,50 @@ function IngresosTab({
               )}
             </div>
           ))}
+        </div>
+      )}
+
+      {duplicateIngreso && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-surface rounded-xl p-6 border border-border max-w-md w-full mx-4">
+            <h2 className="text-xl font-semibold mb-4">Duplicar Ingreso</h2>
+            <p className="text-sm text-muted mb-4">
+              Cambiá la fecha del duplicado (debe ser distinta a la original).
+            </p>
+            {duplicateError && (
+              <div className="mb-4 p-3 bg-red-50 text-red-800 rounded-lg border border-red-200 text-sm">
+                {duplicateError}
+              </div>
+            )}
+            <div className="mb-4">
+              <label className="block text-sm font-medium mb-2">Fecha *</label>
+              <input
+                type="date"
+                value={duplicateFecha}
+                onChange={(e) => setDuplicateFecha(e.target.value)}
+                className="w-full px-4 py-2 border border-border rounded-lg bg-background"
+              />
+            </div>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => { setDuplicateIngreso(null); setDuplicateError(null) }}
+                className="flex-1 px-4 py-2 border border-border rounded-lg hover:bg-surface-elevated transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={handleDuplicateConfirm}
+                disabled={
+                  duplicateFecha === (duplicateIngreso.fecha ? duplicateIngreso.fecha.slice(0, 10) : '')
+                }
+                className="flex-1 px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent-hover disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                Duplicar
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
