@@ -20,8 +20,10 @@ import {
   useSortable,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { GripVertical, Pencil, Trash2, Search, ExternalLink, UserPlus, Info, MessageCircle } from 'lucide-react'
+import { GripVertical, Search } from 'lucide-react'
 import { ChatModal } from '@/components/ChatModal'
+import { LeadEditModal } from '@/components/LeadEditModal'
+import { LeadActionsPopover } from '@/components/LeadActionsPopover'
 
 interface Lead {
   id: number
@@ -39,102 +41,6 @@ const ESTADOS_PIPELINE = [
   { id: 'Vendido', label: 'Vendido', color: 'bg-green-500' },
   { id: 'Derivado', label: 'Derivado', color: 'bg-gray-500' },
 ]
-
-interface LeadEditModalProps {
-  lead: Lead | null
-  onClose: () => void
-  onSave: (id: number, data: { nombre: string; username: string }) => Promise<void>
-}
-
-function LeadEditModal({ lead, onClose, onSave }: LeadEditModalProps) {
-  const [nombre, setNombre] = useState('')
-  const [username, setUsername] = useState('')
-  const [submitting, setSubmitting] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    if (lead) {
-      setNombre(lead.nombre || '')
-      setUsername(lead.username || '')
-    }
-  }, [lead])
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!lead) return
-
-    setError(null)
-    setSubmitting(true)
-
-    try {
-      await onSave(lead.id, {
-        nombre: nombre.trim(),
-        username: username.trim().replace('@', ''),
-      })
-      onClose()
-    } catch (err: any) {
-      setError(err.message || 'Error al guardar lead')
-    } finally {
-      setSubmitting(false)
-    }
-  }
-
-  if (!lead) return null
-
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-surface rounded-xl p-6 border border-border max-w-md w-full mx-4">
-        <h2 className="text-xl font-semibold mb-4">Editar Lead</h2>
-
-        {error && (
-          <div className="mb-4 p-3 bg-red-500/10 text-red-500 rounded-lg border border-red-500/30 text-sm">
-            {error}
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium mb-2">Nombre</label>
-            <input
-              type="text"
-              value={nombre}
-              onChange={(e) => setNombre(e.target.value)}
-              className="w-full px-4 py-2 border border-border rounded-lg bg-background"
-              placeholder="Nombre del lead"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-2">Username</label>
-            <input
-              type="text"
-              value={username}
-              onChange={(e) => setUsername(e.target.value.replace('@', ''))}
-              className="w-full px-4 py-2 border border-border rounded-lg bg-background"
-              placeholder="ej: carlosvercellone"
-            />
-          </div>
-
-          <div className="flex gap-3">
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex-1 px-4 py-2 border border-border rounded-lg hover:bg-surface-elevated transition-colors"
-            >
-              Cancelar
-            </button>
-            <button
-              type="submit"
-              disabled={submitting}
-              className="flex-1 px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent-hover disabled:opacity-50 transition-colors"
-            >
-              {submitting ? 'Guardando...' : 'Guardar'}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  )
-}
 
 function LeadCard({
   lead,
@@ -183,11 +89,6 @@ function LeadCard({
 
   const displayName = lead.username ? `@${lead.username}` : lead.nombre || 'Sin nombre'
 
-  const runAndClose = (fn: () => void) => {
-    fn()
-    onToggleActions()
-  }
-
   return (
     <div
       ref={setNodeRef}
@@ -208,80 +109,16 @@ function LeadCard({
             Última interacción: {formatFecha(lead.ultima_interaccion)}
           </div>
         </div>
-        <div className="relative flex items-center">
-          <button
-            onClick={(e) => {
-              e.stopPropagation()
-              onToggleActions()
-            }}
-            className="p-1.5 hover:bg-surface rounded transition-colors"
-            title="Acciones"
-          >
-            <Info className="w-4 h-4 text-muted" />
-          </button>
-          {isActionsOpen && (
-            <div
-              data-lead-actions-popover
-              className="absolute right-0 top-full mt-1 z-50 min-w-[160px] py-1 bg-surface border border-border rounded-lg shadow-lg"
-              onClick={(e) => e.stopPropagation()}
-            >
-              {lead.username && (
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    runAndClose(() => onOpenInstagram(lead.username))
-                  }}
-                  className="w-full px-4 py-2 text-left text-sm hover:bg-surface-elevated flex items-center gap-2"
-                >
-                  <ExternalLink className="w-4 h-4 text-muted" />
-                  Abrir Instagram
-                </button>
-              )}
-              <button
-                onClick={(e) => {
-                  e.stopPropagation()
-                  runAndClose(() => onLeerConversacion(lead))
-                }}
-                className="w-full px-4 py-2 text-left text-sm hover:bg-surface-elevated flex items-center gap-2"
-              >
-                <MessageCircle className="w-4 h-4 text-muted" />
-                Leer Conversación
-              </button>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation()
-                  runAndClose(() => onEdit(lead))
-                }}
-                className="w-full px-4 py-2 text-left text-sm hover:bg-surface-elevated flex items-center gap-2"
-              >
-                <Pencil className="w-4 h-4 text-muted" />
-                Editar
-              </button>
-              {lead.manychat_id && lead.estado !== 'Derivado' && (
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    runAndClose(() => onDerivar(lead))
-                  }}
-                  className="w-full px-4 py-2 text-left text-sm hover:bg-surface-elevated flex items-center gap-2"
-                >
-                  <UserPlus className="w-4 h-4 text-muted" />
-                  Derivar
-                </button>
-              )}
-              <button
-                onClick={(e) => {
-                  e.stopPropagation()
-                  runAndClose(() => onDelete(lead))
-                }}
-                className="w-full px-4 py-2 text-left text-sm hover:bg-surface-elevated flex items-center gap-2 text-red-500"
-              >
-                <Trash2 className="w-4 h-4" />
-                Borrar
-              </button>
-            </div>
-          )}
-        </div>
+        <LeadActionsPopover
+          lead={lead}
+          isOpen={isActionsOpen}
+          onToggle={onToggleActions}
+          onOpenInstagram={onOpenInstagram}
+          onLeerConversacion={onLeerConversacion}
+          onEdit={onEdit}
+          onDerivar={onDerivar}
+          onDelete={onDelete}
+        />
       </div>
     </div>
   )

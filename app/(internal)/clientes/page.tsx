@@ -1,8 +1,11 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Search, ExternalLink } from 'lucide-react'
+import { Search } from 'lucide-react'
 import Link from 'next/link'
+import { LeadEditModal } from '@/components/LeadEditModal'
+import { LeadActionsPopover } from '@/components/LeadActionsPopover'
+import { ChatModal } from '@/components/ChatModal'
 
 interface Cliente {
   id: number
@@ -18,10 +21,31 @@ export default function ClientesPage() {
   const [clientes, setClientes] = useState<Cliente[]>([])
   const [searchTerm, setSearchTerm] = useState('')
   const [loading, setLoading] = useState(true)
+  const [editLead, setEditLead] = useState<Cliente | null>(null)
+  const [openActionsClienteId, setOpenActionsClienteId] = useState<number | null>(null)
+  const [chatModalLead, setChatModalLead] = useState<Cliente | null>(null)
+  const [chatHistory, setChatHistory] = useState<any>(null)
+  const [chatLoading, setChatLoading] = useState(false)
+  const [chatError, setChatError] = useState<string | null>(null)
 
   useEffect(() => {
     fetchClientes()
   }, [])
+
+  useEffect(() => {
+    if (openActionsClienteId === null) return
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as HTMLElement
+      if (
+        !target.closest('[data-lead-actions-popover]') &&
+        !target.closest(`[data-lead-card="${openActionsClienteId}"]`)
+      ) {
+        setOpenActionsClienteId(null)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [openActionsClienteId])
 
   const fetchClientes = async () => {
     try {
@@ -38,6 +62,91 @@ export default function ClientesPage() {
   const openInstagram = (username: string | null) => {
     if (!username) return
     window.open(`https://instagram.com/${username}`, '_blank')
+  }
+
+  const handleEditLead = async (id: number, data: { nombre: string; username: string }) => {
+    const response = await fetch(`/api/leads/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    })
+
+    if (!response.ok) {
+      const error = await response.json()
+      throw new Error(error.error || 'Error al guardar lead')
+    }
+
+    fetchClientes()
+  }
+
+  const handleDeleteLead = async (lead: Cliente) => {
+    if (!confirm('¿Borrar este lead? Esta acción no se puede deshacer.')) return
+
+    try {
+      const response = await fetch(`/api/leads/${lead.id}`, { method: 'DELETE' })
+
+      if (!response.ok) {
+        const data = await response.json()
+        throw new Error(data.error || 'Error al borrar lead')
+      }
+
+      setEditLead(null)
+      fetchClientes()
+    } catch (error: any) {
+      alert(error.message || 'Error al borrar lead')
+    }
+  }
+
+  const handleDerivar = async (lead: Cliente) => {
+    if (!lead.manychat_id) {
+      alert('Lead sin manychat_id, no se puede derivar')
+      return
+    }
+
+    try {
+      const response = await fetch('/api/leads/derivar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ manychat_id: lead.manychat_id }),
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        alert(data.reply ?? 'Lead derivado ✅')
+        fetchClientes()
+      } else {
+        throw new Error(data.error || 'Error al derivar')
+      }
+    } catch (error: any) {
+      alert(error.message || 'Error al derivar lead')
+    }
+  }
+
+  const handleLeerConversacion = async (lead: Cliente) => {
+    if (!lead.manychat_id) {
+      alert('Lead sin ManyChat ID')
+      return
+    }
+    setChatModalLead(lead)
+    setChatHistory(null)
+    setChatError(null)
+    setChatLoading(true)
+
+    try {
+      const res = await fetch(`/api/conversacion?manychatId=${encodeURIComponent(lead.manychat_id)}`)
+      const data = await res.json()
+
+      if (!res.ok) {
+        throw new Error(data.error || 'Error al cargar conversación')
+      }
+
+      setChatHistory(data.chatHistory)
+    } catch (err: any) {
+      setChatError(err.message || 'Error al cargar conversación')
+    } finally {
+      setChatLoading(false)
+    }
   }
 
   const formatFecha = (fecha: string | null) => {
@@ -100,21 +209,23 @@ export default function ClientesPage() {
           {filtered.map((cliente) => (
             <div
               key={cliente.id}
+              data-lead-card={cliente.id}
               className="bg-surface rounded-xl p-6 border border-border hover:bg-surface-elevated transition-colors flex flex-col"
             >
               <div className="flex items-start justify-between mb-2">
                 <h3 className="text-lg font-semibold">
                   {cliente.username ? `@${cliente.username}` : cliente.nombre || 'Sin nombre'}
                 </h3>
-                {cliente.username && (
-                  <button
-                    onClick={() => openInstagram(cliente.username)}
-                    className="p-2 hover:bg-surface rounded transition-colors"
-                    title="Abrir Instagram"
-                  >
-                    <ExternalLink className="w-4 h-4 text-muted" />
-                  </button>
-                )}
+                <LeadActionsPopover
+                  lead={cliente}
+                  isOpen={openActionsClienteId === cliente.id}
+                  onToggle={() => setOpenActionsClienteId((prev) => (prev === cliente.id ? null : cliente.id))}
+                  onOpenInstagram={openInstagram}
+                  onLeerConversacion={handleLeerConversacion}
+                  onEdit={setEditLead}
+                  onDerivar={handleDerivar}
+                  onDelete={handleDeleteLead}
+                />
               </div>
               {cliente.username && cliente.nombre && cliente.nombre !== cliente.username && (
                 <p className="text-sm text-muted mb-2">{cliente.nombre}</p>
@@ -125,6 +236,24 @@ export default function ClientesPage() {
             </div>
           ))}
         </div>
+      )}
+
+      {editLead && (
+        <LeadEditModal
+          lead={editLead}
+          onClose={() => setEditLead(null)}
+          onSave={handleEditLead}
+        />
+      )}
+
+      {chatModalLead && (
+        <ChatModal
+          lead={chatModalLead}
+          onClose={() => setChatModalLead(null)}
+          chatHistory={chatHistory}
+          loading={chatLoading}
+          error={chatError}
+        />
       )}
     </div>
   )

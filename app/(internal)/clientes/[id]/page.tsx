@@ -4,6 +4,19 @@ import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Plus, Edit2, Trash2, Copy, ExternalLink } from 'lucide-react'
+import { LeadEditModal } from '@/components/LeadEditModal'
+import { LeadActionsPopover } from '@/components/LeadActionsPopover'
+import { ChatModal } from '@/components/ChatModal'
+
+interface Lead {
+  id: number
+  manychat_id: string | null
+  nombre: string | null
+  username: string | null
+  estado: string
+  ultima_interaccion: string | null
+  created_at: string
+}
 
 interface Cliente {
   id: number
@@ -50,6 +63,13 @@ export default function ClienteDetailPage() {
   const [resultados, setResultados] = useState<Resultado[]>([])
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<'overview' | 'recursos' | 'tareas' | 'ficha' | 'resultados' | 'onboarding'>('overview')
+  const [associatedLead, setAssociatedLead] = useState<Lead | null>(null)
+  const [leadActionsOpen, setLeadActionsOpen] = useState(false)
+  const [editLead, setEditLead] = useState<Lead | null>(null)
+  const [chatModalLead, setChatModalLead] = useState<Lead | null>(null)
+  const [chatHistory, setChatHistory] = useState<any>(null)
+  const [chatLoading, setChatLoading] = useState(false)
+  const [chatError, setChatError] = useState<string | null>(null)
 
   useEffect(() => {
     if (clienteId) {
@@ -57,8 +77,23 @@ export default function ClienteDetailPage() {
       fetchRecursos()
       fetchTareas()
       fetchResultados()
+      fetchAssociatedLead()
     }
   }, [clienteId])
+
+  const fetchAssociatedLead = async () => {
+    try {
+      const res = await fetch(`/api/clientes/${clienteId}/lead`)
+      if (res.ok) {
+        const data = await res.json()
+        setAssociatedLead(data)
+      } else {
+        setAssociatedLead(null)
+      }
+    } catch {
+      setAssociatedLead(null)
+    }
+  }
 
   const fetchCliente = async () => {
     try {
@@ -140,6 +175,108 @@ export default function ClienteDetailPage() {
     }
   }
 
+  useEffect(() => {
+    if (!leadActionsOpen) return
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as HTMLElement
+      if (!target.closest('[data-lead-actions-popover]') && !target.closest('[data-lead-actions-header]')) {
+        setLeadActionsOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [leadActionsOpen])
+
+  const openInstagram = (username: string | null) => {
+    if (!username) return
+    window.open(`https://instagram.com/${username}`, '_blank')
+  }
+
+  const handleEditLead = async (id: number, data: { nombre: string; username: string }) => {
+    const response = await fetch(`/api/leads/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    })
+
+    if (!response.ok) {
+      const error = await response.json()
+      throw new Error(error.error || 'Error al guardar lead')
+    }
+
+    fetchAssociatedLead()
+  }
+
+  const handleDeleteLead = async (lead: Lead) => {
+    if (!confirm('¿Borrar este lead? Esta acción no se puede deshacer.')) return
+
+    try {
+      const response = await fetch(`/api/leads/${lead.id}`, { method: 'DELETE' })
+
+      if (!response.ok) {
+        const data = await response.json()
+        throw new Error(data.error || 'Error al borrar lead')
+      }
+
+      setEditLead(null)
+      setAssociatedLead(null)
+    } catch (error: any) {
+      alert(error.message || 'Error al borrar lead')
+    }
+  }
+
+  const handleDerivar = async (lead: Lead) => {
+    if (!lead.manychat_id) {
+      alert('Lead sin manychat_id, no se puede derivar')
+      return
+    }
+
+    try {
+      const response = await fetch('/api/leads/derivar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ manychat_id: lead.manychat_id }),
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        alert(data.reply ?? 'Lead derivado ✅')
+        fetchAssociatedLead()
+      } else {
+        throw new Error(data.error || 'Error al derivar')
+      }
+    } catch (error: any) {
+      alert(error.message || 'Error al derivar lead')
+    }
+  }
+
+  const handleLeerConversacion = async (lead: Lead) => {
+    if (!lead.manychat_id) {
+      alert('Lead sin ManyChat ID')
+      return
+    }
+    setChatModalLead(lead)
+    setChatHistory(null)
+    setChatError(null)
+    setChatLoading(true)
+
+    try {
+      const res = await fetch(`/api/conversacion?manychatId=${encodeURIComponent(lead.manychat_id)}`)
+      const data = await res.json()
+
+      if (!res.ok) {
+        throw new Error(data.error || 'Error al cargar conversación')
+      }
+
+      setChatHistory(data.chatHistory)
+    } catch (err: any) {
+      setChatError(err.message || 'Error al cargar conversación')
+    } finally {
+      setChatLoading(false)
+    }
+  }
+
   if (loading) {
     return (
       <div className="p-8">
@@ -176,13 +313,27 @@ export default function ClienteDetailPage() {
             <h1 className="text-4xl font-semibold mb-2">{cliente.nombre}</h1>
             <p className="text-muted">{cliente.email}</p>
           </div>
-          <button
-            onClick={handleDeleteCliente}
-            className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-          >
-            <Trash2 className="w-4 h-4" />
-            Eliminar Cliente
-          </button>
+          <div className="flex items-center gap-2" data-lead-actions-header>
+            {associatedLead && (
+              <LeadActionsPopover
+                lead={associatedLead}
+                isOpen={leadActionsOpen}
+                onToggle={() => setLeadActionsOpen((prev) => !prev)}
+                onOpenInstagram={openInstagram}
+                onLeerConversacion={handleLeerConversacion}
+                onEdit={setEditLead}
+                onDerivar={handleDerivar}
+                onDelete={handleDeleteLead}
+              />
+            )}
+            <button
+              onClick={handleDeleteCliente}
+              className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+            >
+              <Trash2 className="w-4 h-4" />
+              Eliminar Cliente
+            </button>
+          </div>
         </div>
       </div>
 
@@ -289,6 +440,24 @@ export default function ClienteDetailPage() {
           )}
         </div>
       </div>
+
+      {editLead && (
+        <LeadEditModal
+          lead={editLead}
+          onClose={() => setEditLead(null)}
+          onSave={handleEditLead}
+        />
+      )}
+
+      {chatModalLead && (
+        <ChatModal
+          lead={chatModalLead}
+          onClose={() => setChatModalLead(null)}
+          chatHistory={chatHistory}
+          loading={chatLoading}
+          error={chatError}
+        />
+      )}
     </div>
   )
 }

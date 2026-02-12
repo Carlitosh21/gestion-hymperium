@@ -142,6 +142,8 @@ Si tienes configuradas las URLs de n8n:
 ```
 N8N_IDEAS_URL=https://tu-n8n.com/webhook/ideas
 N8N_VIDEOS_URL=https://tu-n8n.com/webhook/videos
+N8N_CHAT_URL=https://tu-n8n.com/webhook/chat
+N8N_DERIVAR_URL=https://tu-n8n.com/webhook/derivar
 ```
 
 ### Paso 7: Configurar Dominio y Proxy
