@@ -807,6 +807,24 @@ function CategoriasTab({
     porcentaje: '',
     descripcion: '',
   })
+  const [editCategory, setEditCategory] = useState<Categoria | null>(null)
+  const [editFormData, setEditFormData] = useState({
+    nombre: '',
+    porcentaje: '',
+    descripcion: '',
+  })
+  const [editError, setEditError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (editCategory) {
+      setEditFormData({
+        nombre: editCategory.nombre,
+        porcentaje: String(editCategory.porcentaje),
+        descripcion: editCategory.descripcion || '',
+      })
+      setEditError(null)
+    }
+  }, [editCategory])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -824,9 +842,59 @@ function CategoriasTab({
         setShowForm(false)
         setFormData({ nombre: '', porcentaje: '', descripcion: '' })
         onRefresh()
+      } else {
+        const data = await response.json()
+        alert(data.error || 'Error al crear categoría')
       }
     } catch (error) {
       console.error('Error al crear categoría:', error)
+    }
+  }
+
+  const handleEditSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!editCategory) return
+    setEditError(null)
+    try {
+      const response = await fetch(`/api/finanzas/categorias/${editCategory.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          nombre: editFormData.nombre.trim(),
+          porcentaje: parseFloat(editFormData.porcentaje),
+          descripcion: editFormData.descripcion.trim() || null,
+        }),
+      })
+
+      if (response.ok) {
+        setEditCategory(null)
+        onRefresh()
+      } else {
+        const data = await response.json()
+        setEditError(data.error || 'Error al actualizar categoría')
+      }
+    } catch (error) {
+      console.error('Error al actualizar categoría:', error)
+      setEditError('Error al actualizar categoría')
+    }
+  }
+
+  const handleDelete = async (cat: Categoria) => {
+    if (!confirm(`¿Eliminar la categoría "${cat.nombre}"?`)) return
+    try {
+      const response = await fetch(`/api/finanzas/categorias/${cat.id}`, {
+        method: 'DELETE',
+      })
+
+      if (response.ok) {
+        onRefresh()
+      } else {
+        const data = await response.json()
+        alert(data.error || 'No se pudo eliminar la categoría')
+      }
+    } catch (error) {
+      console.error('Error al eliminar categoría:', error)
+      alert('Error al eliminar categoría')
     }
   }
 
@@ -898,10 +966,86 @@ function CategoriasTab({
                     <p className="text-sm text-muted mt-1">{cat.descripcion}</p>
                   )}
                 </div>
-                <span className="text-sm font-medium">{cat.porcentaje}%</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium">{cat.porcentaje}%</span>
+                  <button
+                    onClick={() => setEditCategory(cat)}
+                    className="p-1.5 hover:bg-surface rounded transition-colors"
+                    title="Editar"
+                  >
+                    <Pencil className="w-4 h-4 text-muted" />
+                  </button>
+                  <button
+                    onClick={() => handleDelete(cat)}
+                    className="p-1.5 hover:bg-surface rounded transition-colors"
+                    title="Eliminar"
+                  >
+                    <Trash2 className="w-4 h-4 text-muted" />
+                  </button>
+                </div>
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {editCategory && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-surface rounded-xl p-6 border border-border max-w-md w-full mx-4">
+            <h2 className="text-xl font-semibold mb-4">Editar Categoría</h2>
+            {editError && (
+              <div className="mb-4 p-3 bg-red-50 text-red-800 rounded-lg border border-red-200 text-sm">
+                {editError}
+              </div>
+            )}
+            <form onSubmit={handleEditSubmit} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-2">Nombre *</label>
+                <input
+                  type="text"
+                  required
+                  value={editFormData.nombre}
+                  onChange={(e) => setEditFormData({ ...editFormData, nombre: e.target.value })}
+                  className="w-full px-4 py-2 border border-border rounded-lg bg-background"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-2">Porcentaje *</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  required
+                  value={editFormData.porcentaje}
+                  onChange={(e) => setEditFormData({ ...editFormData, porcentaje: e.target.value })}
+                  className="w-full px-4 py-2 border border-border rounded-lg bg-background"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-2">Descripción</label>
+                <textarea
+                  value={editFormData.descripcion}
+                  onChange={(e) => setEditFormData({ ...editFormData, descripcion: e.target.value })}
+                  rows={3}
+                  className="w-full px-4 py-2 border border-border rounded-lg bg-background"
+                />
+              </div>
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => { setEditCategory(null); setEditError(null) }}
+                  className="flex-1 px-4 py-2 border border-border rounded-lg hover:bg-surface-elevated transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent-hover transition-colors"
+                >
+                  Guardar
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
     </div>

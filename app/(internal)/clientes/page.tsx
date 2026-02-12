@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import { Search } from 'lucide-react'
 
 interface Cliente {
   id: number
@@ -14,6 +15,7 @@ interface Cliente {
 
 export default function ClientesPage() {
   const [clientes, setClientes] = useState<Cliente[]>([])
+  const [searchTerm, setSearchTerm] = useState('')
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [formData, setFormData] = useState({
@@ -95,6 +97,21 @@ export default function ClientesPage() {
         </div>
       </div>
 
+      {!loading && clientes.length > 0 && (
+        <div className="mb-6 flex items-center gap-2">
+          <div className="relative flex-1 max-w-sm">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Buscar por nombre, email o teléfono…"
+              className="w-full pl-10 pr-4 py-2 border border-border rounded-lg bg-background"
+            />
+          </div>
+        </div>
+      )}
+
       {showForm && (
         <div className="mb-8 bg-surface rounded-xl p-6 border border-border">
           <h2 className="text-xl font-semibold mb-4">Nuevo Cliente</h2>
@@ -169,8 +186,27 @@ export default function ClientesPage() {
           No hay clientes registrados
         </div>
       ) : (
+        <>
+          {(() => {
+            const filtered = searchTerm.trim()
+              ? clientes.filter((c) => {
+                  const q = searchTerm.trim().toLowerCase()
+                  const n = (c.nombre || '').toLowerCase()
+                  const e = (c.email || '').toLowerCase()
+                  const t = (c.telefono || '').toLowerCase()
+                  return n.includes(q) || e.includes(q) || t.includes(q)
+                })
+              : clientes
+            if (filtered.length === 0) {
+              return (
+                <div className="bg-surface rounded-xl p-6 border border-border text-center text-muted">
+                  {searchTerm.trim() ? 'No hay resultados para tu búsqueda' : 'No hay clientes registrados'}
+                </div>
+              )
+            }
+            return (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {clientes.map((cliente) => (
+          {filtered.map((cliente) => (
             <Link
               key={cliente.id}
               href={`/clientes/${cliente.id}`}
@@ -193,6 +229,9 @@ export default function ClientesPage() {
             </Link>
           ))}
         </div>
+            )
+          })()}
+        </>
       )}
     </div>
   )
