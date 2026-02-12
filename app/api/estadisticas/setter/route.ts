@@ -179,21 +179,6 @@ export async function GET(request: Request) {
       if (err.code !== '42P01') throw err
     }
 
-    // ctas: listado (sin filtro por fecha)
-    let ctasList: { accionable: string; detalles: string; recurso: string }[] = []
-    try {
-      const ctasResult = await query(
-        `SELECT accionable, detalles, recurso FROM ctas LIMIT 20`
-      )
-      ctasList = ctasResult.rows.map((r: any) => ({
-        accionable: r.accionable || '',
-        detalles: r.detalles || '',
-        recurso: r.recurso || '',
-      }))
-    } catch (err: any) {
-      if (err.code !== '42P01') throw err
-    }
-
     return NextResponse.json({
       costoMesActualUsd,
       costoDiario,
@@ -201,7 +186,6 @@ export async function GET(request: Request) {
       totals,
       doloresRanking,
       objecionesRanking,
-      ctasList,
     })
   } catch (error: any) {
     console.error('Error al obtener estadísticas setter:', error)

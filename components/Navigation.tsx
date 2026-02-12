@@ -2,13 +2,13 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Home, Target, Users, BarChart3, FileText, MessageCircle, ToggleLeft, Settings } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { LayoutDashboard, Target, Users, FileText, MessageCircle, ToggleLeft, Settings } from 'lucide-react'
 
 const menuItems = [
-  { href: '/', label: 'Inicio', icon: Home },
+  { href: '/', label: 'DashBoard', icon: LayoutDashboard },
   { href: '/leads', label: 'Leads', icon: Target },
   { href: '/clientes', label: 'Clientes', icon: Users },
-  { href: '/estadisticas', label: 'Estadísticas', icon: BarChart3 },
   { href: '/ctas', label: "CTA's", icon: FileText },
   { href: '/chat', label: 'Chat', icon: MessageCircle },
   { href: '/interruptor', label: 'Interruptor', icon: ToggleLeft },
@@ -17,8 +17,15 @@ const menuItems = [
 
 export function Navigation() {
   const pathname = usePathname()
+  const [branding, setBranding] = useState<{ appTitle: string; appSubtitle: string; logoDataUrl: string | null } | null>(null)
 
-  // Activar solo el item con el href más específico que matchea (evitar doble active)
+  useEffect(() => {
+    fetch('/api/branding')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => data && setBranding(data))
+      .catch(() => {})
+  }, [])
+
   const bestMatchHref = menuItems
     .filter((item) => pathname === item.href || (item.href !== '/' && pathname?.startsWith(item.href)))
     .sort((a, b) => b.href.length - a.href.length)[0]?.href
@@ -26,8 +33,11 @@ export function Navigation() {
   return (
     <aside className="w-64 glass border-r border-border min-h-screen p-6">
       <div className="mb-8">
-        <h2 className="text-xl font-semibold">Hymperium</h2>
-        <p className="text-sm text-muted mt-1">Gestión</p>
+        {branding?.logoDataUrl ? (
+          <img src={branding.logoDataUrl} alt="" className="h-10 object-contain mb-2" />
+        ) : null}
+        <h2 className="text-xl font-semibold">{branding?.appTitle ?? 'Hymperium'}</h2>
+        <p className="text-sm text-muted mt-1">{branding?.appSubtitle ?? 'Gestión'}</p>
       </div>
       
       <nav className="space-y-2">

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { hasAdmin, requireInternalSession } from '@/lib/auth'
 import { ensureAuthTables } from '@/lib/auth-schema'
+import { ensureConfigTable } from '@/lib/config-store'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -30,6 +31,7 @@ export async function POST() {
     }
 
     await ensureAuthTables()
+    await ensureConfigTable()
 
     return NextResponse.json({
       success: true,
