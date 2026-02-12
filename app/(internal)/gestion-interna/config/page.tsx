@@ -12,7 +12,6 @@ export default function ConfigPage() {
     appSubtitle: 'Gestión',
     logoDataUrl: null as string | null,
     themeId: 'modern',
-    themeMode: 'light' as 'light' | 'dark',
   })
   const [brandingLoading, setBrandingLoading] = useState(true)
   const [brandingSaving, setBrandingSaving] = useState(false)
@@ -27,7 +26,6 @@ export default function ConfigPage() {
             appSubtitle: data.appSubtitle ?? 'Gestión',
             logoDataUrl: data.logoDataUrl ?? null,
             themeId: data.themeId ?? 'modern',
-            themeMode: data.themeMode === 'dark' ? 'dark' : 'light',
           })
         }
       })
@@ -191,35 +189,10 @@ export default function ConfigPage() {
                 )}
               </div>
               <div>
-                <label className="block text-sm font-medium mb-3">Estilo de fondo</label>
-                <div className="flex gap-4">
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="radio"
-                      name="themeMode"
-                      checked={branding.themeMode === 'light'}
-                      onChange={() => setBranding((b) => ({ ...b, themeMode: 'light' }))}
-                      className="accent-accent"
-                    />
-                    Claro
-                  </label>
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="radio"
-                      name="themeMode"
-                      checked={branding.themeMode === 'dark'}
-                      onChange={() => setBranding((b) => ({ ...b, themeMode: 'dark' }))}
-                      className="accent-accent"
-                    />
-                    Fondo negro
-                  </label>
-                </div>
-              </div>
-              <div>
                 <label className="block text-sm font-medium mb-3">Tema predefinido</label>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                   {THEME_PRESETS.map((preset) => {
-                    const colors = getThemeColors(preset.id, branding.themeMode)
+                    const colors = getThemeColors(preset.id, 'dark')
                     const isSelected = (branding.themeId || 'modern') === preset.id
                     return (
                       <button

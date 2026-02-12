@@ -5,7 +5,7 @@ export const DEFAULT_BRANDING = {
   appSubtitle: 'Gestión',
   logoDataUrl: null as string | null,
   themeId: 'modern' as string,
-  themeMode: 'light' as 'light' | 'dark',
+  themeMode: 'dark' as 'light' | 'dark',
   colors: {
     accent: '#007aff',
     accentHover: '#0051d5',
@@ -71,7 +71,7 @@ export async function getBranding(): Promise<Branding> {
       appSubtitle: parsed.appSubtitle ?? DEFAULT_BRANDING.appSubtitle,
       logoDataUrl: parsed.logoDataUrl ?? DEFAULT_BRANDING.logoDataUrl,
       themeId: hasThemePreference ? (parsed.themeId ?? DEFAULT_BRANDING.themeId) : '',
-      themeMode: parsed.themeMode === 'dark' ? 'dark' : 'light',
+      themeMode: 'dark',
       colors: parsed.colors ? { ...DEFAULT_BRANDING.colors, ...parsed.colors } : DEFAULT_BRANDING.colors,
     }
   } catch {
@@ -86,7 +86,7 @@ export async function saveBranding(branding: Partial<Branding>): Promise<void> {
     appSubtitle: branding.appSubtitle ?? current.appSubtitle,
     logoDataUrl: branding.logoDataUrl !== undefined ? branding.logoDataUrl : current.logoDataUrl,
     themeId: branding.themeId ?? current.themeId,
-    themeMode: branding.themeMode === 'dark' ? 'dark' : 'light',
+    themeMode: 'dark',
     colors: branding.colors ? { ...current.colors, ...branding.colors } : current.colors,
   }
   await setConfig('branding', JSON.stringify(merged))

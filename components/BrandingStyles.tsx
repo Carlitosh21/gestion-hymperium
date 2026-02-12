@@ -22,8 +22,8 @@ export function BrandingStyles() {
           glassBorder: '--glass-border',
         }
         let colors: Record<string, string>
-        if (data.themeId && data.themeMode && data.themeId !== '') {
-          colors = getThemeColors(data.themeId, data.themeMode) as unknown as Record<string, string>
+        if (data.themeId && data.themeId !== '') {
+          colors = getThemeColors(data.themeId, 'dark') as unknown as Record<string, string>
         } else if (data.colors) {
           colors = data.colors
         } else {
