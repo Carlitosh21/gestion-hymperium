@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { THEME_PRESETS, getThemeColors } from '@/lib/theme-presets'
 
 export default function ConfigPage() {
   const [migrating, setMigrating] = useState(false)
@@ -10,15 +11,8 @@ export default function ConfigPage() {
     appTitle: 'Hymperium',
     appSubtitle: 'Gestión',
     logoDataUrl: null as string | null,
-    colors: {
-      accent: '#007aff',
-      accentHover: '#0051d5',
-      background: '#fafafa',
-      foreground: '#1d1d1f',
-      surface: '#ffffff',
-      border: 'rgba(0, 0, 0, 0.1)',
-      muted: '#86868b',
-    },
+    themeId: 'modern',
+    themeMode: 'light' as 'light' | 'dark',
   })
   const [brandingLoading, setBrandingLoading] = useState(true)
   const [brandingSaving, setBrandingSaving] = useState(false)
@@ -27,7 +21,15 @@ export default function ConfigPage() {
     fetch('/api/branding')
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
-        if (data) setBranding(data)
+        if (data) {
+          setBranding({
+            appTitle: data.appTitle ?? 'Hymperium',
+            appSubtitle: data.appSubtitle ?? 'Gestión',
+            logoDataUrl: data.logoDataUrl ?? null,
+            themeId: data.themeId ?? 'modern',
+            themeMode: data.themeMode === 'dark' ? 'dark' : 'light',
+          })
+        }
       })
       .catch(() => {})
       .finally(() => setBrandingLoading(false))
@@ -188,56 +190,84 @@ export default function ConfigPage() {
                   />
                 )}
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium mb-2">Color principal (accent)</label>
-                  <input
-                    type="color"
-                    value={branding.colors.accent}
-                    onChange={(e) =>
-                      setBranding((b) => ({
-                        ...b,
-                        colors: { ...b.colors, accent: e.target.value },
-                      }))
-                    }
-                    className="w-full h-10 rounded border border-border cursor-pointer"
-                  />
-                  <input
-                    type="text"
-                    value={branding.colors.accent}
-                    onChange={(e) =>
-                      setBranding((b) => ({
-                        ...b,
-                        colors: { ...b.colors, accent: e.target.value },
-                      }))
-                    }
-                    className="mt-1 w-full px-2 py-1 text-sm border border-border rounded bg-background"
-                  />
+              <div>
+                <label className="block text-sm font-medium mb-3">Estilo de fondo</label>
+                <div className="flex gap-4">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="themeMode"
+                      checked={branding.themeMode === 'light'}
+                      onChange={() => setBranding((b) => ({ ...b, themeMode: 'light' }))}
+                      className="accent-accent"
+                    />
+                    Claro
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="themeMode"
+                      checked={branding.themeMode === 'dark'}
+                      onChange={() => setBranding((b) => ({ ...b, themeMode: 'dark' }))}
+                      className="accent-accent"
+                    />
+                    Fondo negro
+                  </label>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium mb-2">Color hover (accent-hover)</label>
-                  <input
-                    type="color"
-                    value={branding.colors.accentHover}
-                    onChange={(e) =>
-                      setBranding((b) => ({
-                        ...b,
-                        colors: { ...b.colors, accentHover: e.target.value },
-                      }))
-                    }
-                    className="w-full h-10 rounded border border-border cursor-pointer"
-                  />
-                  <input
-                    type="text"
-                    value={branding.colors.accentHover}
-                    onChange={(e) =>
-                      setBranding((b) => ({
-                        ...b,
-                        colors: { ...b.colors, accentHover: e.target.value },
-                      }))
-                    }
-                    className="mt-1 w-full px-2 py-1 text-sm border border-border rounded bg-background"
-                  />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-3">Tema predefinido</label>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                  {THEME_PRESETS.map((preset) => {
+                    const colors = getThemeColors(preset.id, branding.themeMode)
+                    const isSelected = (branding.themeId || 'modern') === preset.id
+                    return (
+                      <button
+                        key={preset.id}
+                        type="button"
+                        onClick={() => setBranding((b) => ({ ...b, themeId: preset.id }))}
+                        className="rounded-xl p-4 border-2 transition-all text-left hover:opacity-90"
+                        style={{
+                          backgroundColor: colors.surface,
+                          borderColor: isSelected ? preset.accent : colors.border,
+                          outline: isSelected ? `2px solid ${preset.accent}` : undefined,
+                          outlineOffset: 2,
+                        }}
+                      >
+                        <div
+                          className="h-1.5 rounded-full mb-3"
+                          style={{ backgroundColor: preset.accent }}
+                        />
+                        <p className="text-sm font-medium" style={{ color: colors.foreground }}>
+                          AaBbCc
+                        </p>
+                        <div className="flex gap-2 mt-2">
+                          <span
+                            className="px-2 py-1 rounded text-xs text-white"
+                            style={{ backgroundColor: preset.accent }}
+                          >
+                            Button
+                          </span>
+                          <span
+                            className="px-2 py-1 rounded text-xs border"
+                            style={{ color: preset.accent, borderColor: preset.accent }}
+                          >
+                            Button
+                          </span>
+                        </div>
+                        <div className="flex gap-2 mt-2">
+                          <span
+                            className="w-4 h-4 rounded-full"
+                            style={{ backgroundColor: preset.accent }}
+                          />
+                          <span
+                            className="w-4 h-4 rounded-full border border-current opacity-50"
+                            style={{ color: colors.foreground }}
+                          />
+                        </div>
+                      </button>
+                    )
+                  })}
                 </div>
               </div>
               <button

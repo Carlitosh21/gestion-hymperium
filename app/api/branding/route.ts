@@ -29,6 +29,8 @@ export async function POST(request: Request) {
       appTitle: body.appTitle,
       appSubtitle: body.appSubtitle,
       logoDataUrl: body.logoDataUrl,
+      themeId: body.themeId,
+      themeMode: body.themeMode,
       colors: body.colors,
     }
     await saveBranding(branding)

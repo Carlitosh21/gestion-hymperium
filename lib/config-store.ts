@@ -4,6 +4,8 @@ export const DEFAULT_BRANDING = {
   appTitle: 'Hymperium',
   appSubtitle: 'Gestión',
   logoDataUrl: null as string | null,
+  themeId: 'modern' as string,
+  themeMode: 'light' as 'light' | 'dark',
   colors: {
     accent: '#007aff',
     accentHover: '#0051d5',
@@ -14,6 +16,8 @@ export const DEFAULT_BRANDING = {
     muted: '#86868b',
   } as Record<string, string>,
 }
+
+export type Branding = typeof DEFAULT_BRANDING
 
 export async function ensureConfigTable(): Promise<void> {
   await query(`
@@ -50,7 +54,7 @@ export async function setConfig(key: string, value: string): Promise<void> {
   )
 }
 
-export async function getBranding(): Promise<typeof DEFAULT_BRANDING> {
+export async function getBranding(): Promise<Branding> {
   try {
     await ensureConfigTable()
   } catch {
@@ -60,25 +64,30 @@ export async function getBranding(): Promise<typeof DEFAULT_BRANDING> {
   const raw = await getConfig('branding')
   if (!raw) return DEFAULT_BRANDING
   try {
-    const parsed = JSON.parse(raw) as Partial<typeof DEFAULT_BRANDING>
+    const parsed = JSON.parse(raw) as Partial<Branding>
+    const hasThemePreference = 'themeId' in parsed && parsed.themeId != null
     return {
       appTitle: parsed.appTitle ?? DEFAULT_BRANDING.appTitle,
       appSubtitle: parsed.appSubtitle ?? DEFAULT_BRANDING.appSubtitle,
       logoDataUrl: parsed.logoDataUrl ?? DEFAULT_BRANDING.logoDataUrl,
-      colors: { ...DEFAULT_BRANDING.colors, ...parsed.colors },
+      themeId: hasThemePreference ? (parsed.themeId ?? DEFAULT_BRANDING.themeId) : '',
+      themeMode: parsed.themeMode === 'dark' ? 'dark' : 'light',
+      colors: parsed.colors ? { ...DEFAULT_BRANDING.colors, ...parsed.colors } : DEFAULT_BRANDING.colors,
     }
   } catch {
     return DEFAULT_BRANDING
   }
 }
 
-export async function saveBranding(branding: Partial<typeof DEFAULT_BRANDING>): Promise<void> {
+export async function saveBranding(branding: Partial<Branding>): Promise<void> {
   const current = await getBranding()
-  const merged = {
+  const merged: Branding = {
     appTitle: branding.appTitle ?? current.appTitle,
     appSubtitle: branding.appSubtitle ?? current.appSubtitle,
     logoDataUrl: branding.logoDataUrl !== undefined ? branding.logoDataUrl : current.logoDataUrl,
-    colors: { ...current.colors, ...branding.colors },
+    themeId: branding.themeId ?? current.themeId,
+    themeMode: branding.themeMode === 'dark' ? 'dark' : 'light',
+    colors: branding.colors ? { ...current.colors, ...branding.colors } : current.colors,
   }
   await setConfig('branding', JSON.stringify(merged))
 }

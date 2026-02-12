@@ -1,13 +1,14 @@
 'use client'
 
 import { useEffect } from 'react'
+import { getThemeColors } from '@/lib/theme-presets'
 
 export function BrandingStyles() {
   useEffect(() => {
     fetch('/api/branding')
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
-        if (!data?.colors) return
+        if (!data) return
         const root = document.documentElement
         const map: Record<string, string> = {
           accent: '--color-accent',
@@ -17,9 +18,19 @@ export function BrandingStyles() {
           surface: '--color-surface',
           border: '--color-border',
           muted: '--color-muted',
+          glassBackground: '--glass-background',
+          glassBorder: '--glass-border',
+        }
+        let colors: Record<string, string>
+        if (data.themeId && data.themeMode && data.themeId !== '') {
+          colors = getThemeColors(data.themeId, data.themeMode) as unknown as Record<string, string>
+        } else if (data.colors) {
+          colors = data.colors
+        } else {
+          return
         }
         for (const [key, cssVar] of Object.entries(map)) {
-          const val = data.colors[key]
+          const val = colors[key]
           if (val) root.style.setProperty(cssVar, val)
         }
       })
