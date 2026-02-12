@@ -10,18 +10,11 @@ export async function GET() {
     const result = await query(
       `SELECT id, manychat_id, nombre, username, estado, ultima_interaccion, created_at
        FROM leads
-       WHERE estado = 'Vendido'
        ORDER BY COALESCE(ultima_interaccion, created_at) DESC NULLS LAST, id DESC`
     )
     return NextResponse.json(result.rows)
   } catch (error: any) {
-    if (error.message === 'Unauthorized') {
-      return NextResponse.json(
-        { error: 'No autorizado' },
-        { status: 401 }
-      )
-    }
-    console.error('Error al obtener clientes:', error)
+    console.error('Error al obtener leads:', error)
     return NextResponse.json(
       { error: error.message },
       { status: 500 }

@@ -8,12 +8,12 @@ export default function EstadisticasPage() {
 
   const modules = [
     {
-      id: 'ventas',
-      title: 'Ventas',
-      description: 'Prospección, Llamadas y Contenido',
+      id: 'setter',
+      title: 'Performance Setter',
+      description: 'Métricas diarias del Setter',
       icon: TrendingUp,
       color: 'bg-blue-500',
-      href: '/estadisticas/ventas',
+      href: '/estadisticas/setter',
       available: true,
     },
     {

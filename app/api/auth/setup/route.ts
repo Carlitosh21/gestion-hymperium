@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { query } from '@/lib/db'
 import { hasAdmin, createSession } from '@/lib/auth'
+import { ensureAuthTables } from '@/lib/auth-schema'
 import { cookies } from 'next/headers'
 const bcrypt = require('bcryptjs')
 
@@ -52,14 +53,25 @@ export async function POST(request: Request) {
         [email, password_hash]
       )
     } catch (error: any) {
-      // Migraciones no corridas: la tabla puede no existir todavía.
+      // Tabla no existe: crear tablas de auth mínimas e intentar de nuevo
       if (error?.code === '42P01') {
-        return NextResponse.json(
-          { error: 'Base de datos sin migrar. Ejecutá primero POST /api/migrate.' },
-          { status: 503 }
-        )
+        try {
+          await ensureAuthTables()
+          result = await query(
+            `INSERT INTO usuarios_internos (email, password_hash, role)
+             VALUES ($1, $2, 'admin')
+             RETURNING id, email, role`,
+            [email, password_hash]
+          )
+        } catch (retryError: any) {
+          return NextResponse.json(
+            { error: retryError.message || 'No se pudieron crear las tablas de autenticación.' },
+            { status: 503 }
+          )
+        }
+      } else {
+        throw error
       }
-      throw error
     }
 
     const user = result.rows[0]

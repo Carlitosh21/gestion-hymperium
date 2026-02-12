@@ -30,7 +30,7 @@ export async function POST(request: Request) {
       // Migraciones no corridas: la tabla puede no existir todavía.
       if (error?.code === '42P01') {
         return NextResponse.json(
-          { error: 'Base de datos sin migrar. Ejecutá POST /api/migrate y luego creá el admin en /setup.' },
+          { error: 'Primero accedé a /setup para crear el administrador.' },
           { status: 503 }
         )
       }
