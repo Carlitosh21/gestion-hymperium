@@ -37,6 +37,7 @@ interface StatsData {
   quarter?: number
   kpis: {
     totalIngresosBrutos: number
+    totalCashCollected?: number
     totalIngresosHymperium: number
     totalIngresosPendientesBrutos: number
     totalIngresosPendientesHymperium: number
@@ -65,8 +66,12 @@ interface StatsData {
   topIngresos: Array<{ id: number; descripcion: string; monto: number; hymperium: number; fecha: string }>
   topEgresos: Array<{ id: number; descripcion: string; categoria: string; monto: number; fecha: string }>
   comparativoMensual: {
-    mesActual: { ingresos: number; egresos: number; balance: number }
-    mesAnterior: { ingresos: number; egresos: number; balance: number }
+    mesActual: { ingresos: number; egresos: number; balance: number; ingresosBrutos?: number; cashCollected?: number }
+    mesAnterior: { ingresos: number; egresos: number; balance: number; ingresosBrutos?: number; cashCollected?: number }
+  } | null
+  comparativoTrimestral?: {
+    trimestreActual: { ingresos: number; egresos: number; balance: number; ingresosBrutos: number; cashCollected: number }
+    trimestreAnterior: { ingresos: number; egresos: number; balance: number; ingresosBrutos: number; cashCollected: number }
   } | null
 }
 
@@ -287,11 +292,22 @@ export default function FinanzasStatsPage() {
                 <div className="flex items-center justify-between mb-2">
                   <TrendingUp className="w-5 h-5 text-blue-500" />
                 </div>
-                <p className="text-sm text-muted">Ingresos Brutos reales</p>
+                <p className="text-sm text-muted">Ingresos Brutos Totales</p>
                 <p className="text-2xl font-bold text-blue-500">
                   {formatCurrency(stats.kpis.totalIngresosBrutos)}
                 </p>
                 <p className="text-xs text-muted mt-1">Completados (suman caja)</p>
+              </div>
+
+              <div className="bg-surface rounded-xl p-6 border border-border">
+                <div className="flex items-center justify-between mb-2">
+                  <Wallet className="w-5 h-5 text-cyan-500" />
+                </div>
+                <p className="text-sm text-muted">Cash Collected</p>
+                <p className="text-2xl font-bold text-cyan-500">
+                  {formatCurrency(stats.kpis.totalCashCollected ?? (stats.kpis.totalIngresosBrutos - (stats.kpis.totalPagosDevs ?? 0)))}
+                </p>
+                <p className="text-xs text-muted mt-1">Ingresos Brutos - Pago a Dev</p>
               </div>
 
               <div className="bg-surface rounded-xl p-6 border border-border">
@@ -666,7 +682,7 @@ export default function FinanzasStatsPage() {
 
           {/* Comparativo mensual */}
           {stats.comparativoMensual && (
-            <section>
+            <section className="mb-12">
               <div className="flex items-center gap-3 mb-6">
                 <ArrowUpRight className="w-6 h-6 text-indigo-500" />
                 <h2 className="text-2xl font-semibold">Comparativo Mensual</h2>
@@ -730,6 +746,103 @@ export default function FinanzasStatsPage() {
                         }
                       >
                         {formatCurrency(stats.comparativoMensual.mesAnterior.balance)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </section>
+          )}
+
+          {/* Comparativo trimestral */}
+          {stats.comparativoTrimestral && (
+            <section>
+              <div className="flex items-center gap-3 mb-6">
+                <ArrowUpRight className="w-6 h-6 text-indigo-500" />
+                <h2 className="text-2xl font-semibold">Comparativo Trimestral</h2>
+              </div>
+              <p className="text-sm text-muted mb-4">Trimestre actual vs trimestre anterior</p>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="bg-surface rounded-xl p-6 border border-border">
+                  <h3 className="text-lg font-semibold mb-4">Trimestre Actual</h3>
+                  <div className="space-y-2">
+                    <div className="flex justify-between">
+                      <span className="text-muted">Ingresos Brutos:</span>
+                      <span className="text-blue-600 font-medium">
+                        {formatCurrency(stats.comparativoTrimestral.trimestreActual.ingresosBrutos)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted">Cash Collected:</span>
+                      <span className="text-cyan-600 font-medium">
+                        {formatCurrency(stats.comparativoTrimestral.trimestreActual.cashCollected)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted">Ingresos Hymperium:</span>
+                      <span className="text-green-600 font-medium">
+                        {formatCurrency(stats.comparativoTrimestral.trimestreActual.ingresos)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted">Egresos:</span>
+                      <span className="text-red-600 font-medium">
+                        {formatCurrency(stats.comparativoTrimestral.trimestreActual.egresos)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between font-medium pt-2 border-t border-border">
+                      <span>Balance:</span>
+                      <span
+                        className={
+                          stats.comparativoTrimestral.trimestreActual.balance >= 0
+                            ? 'text-green-600'
+                            : 'text-red-600'
+                        }
+                      >
+                        {formatCurrency(stats.comparativoTrimestral.trimestreActual.balance)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-surface rounded-xl p-6 border border-border">
+                  <h3 className="text-lg font-semibold mb-4">Trimestre Anterior</h3>
+                  <div className="space-y-2">
+                    <div className="flex justify-between">
+                      <span className="text-muted">Ingresos Brutos:</span>
+                      <span className="text-blue-600 font-medium">
+                        {formatCurrency(stats.comparativoTrimestral.trimestreAnterior.ingresosBrutos)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted">Cash Collected:</span>
+                      <span className="text-cyan-600 font-medium">
+                        {formatCurrency(stats.comparativoTrimestral.trimestreAnterior.cashCollected)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted">Ingresos Hymperium:</span>
+                      <span className="text-green-600 font-medium">
+                        {formatCurrency(stats.comparativoTrimestral.trimestreAnterior.ingresos)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted">Egresos:</span>
+                      <span className="text-red-600 font-medium">
+                        {formatCurrency(stats.comparativoTrimestral.trimestreAnterior.egresos)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between font-medium pt-2 border-t border-border">
+                      <span>Balance:</span>
+                      <span
+                        className={
+                          stats.comparativoTrimestral.trimestreAnterior.balance >= 0
+                            ? 'text-green-600'
+                            : 'text-red-600'
+                        }
+                      >
+                        {formatCurrency(stats.comparativoTrimestral.trimestreAnterior.balance)}
                       </span>
                     </div>
                   </div>

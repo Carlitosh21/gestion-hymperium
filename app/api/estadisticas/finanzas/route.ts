@@ -184,6 +184,7 @@ export async function GET(request: Request) {
     )
     const totalEgresosPendientes = parseFloat(egresosPendientesResult.rows[0]?.total || '0')
 
+    const totalCashCollected = totalIngresosBrutos - totalPagosDevs
     const balance = totalIngresosHymperium - totalEgresos
     const margenHymperium = totalIngresosBrutos > 0 ? (totalIngresosHymperium / totalIngresosBrutos) * 100 : 0
     const tasaEgreso = totalIngresosHymperium > 0 ? (totalEgresos / totalIngresosHymperium) * 100 : 0
@@ -362,10 +363,16 @@ export async function GET(request: Request) {
       fecha: row.fecha,
     }))
 
-    // Comparativo mensual (si rango >= 30d)
+    // Comparativo mensual (si rango >= 30d y no quarterly)
     let comparativoMensual: {
-      mesActual: { ingresos: number; egresos: number; balance: number }
-      mesAnterior: { ingresos: number; egresos: number; balance: number }
+      mesActual: { ingresos: number; egresos: number; balance: number; ingresosBrutos: number; cashCollected: number }
+      mesAnterior: { ingresos: number; egresos: number; balance: number; ingresosBrutos: number; cashCollected: number }
+    } | null = null
+
+    // Comparativo trimestral (cuando granularity es quarterly)
+    let comparativoTrimestral: {
+      trimestreActual: { ingresos: number; egresos: number; balance: number; ingresosBrutos: number; cashCollected: number }
+      trimestreAnterior: { ingresos: number; egresos: number; balance: number; ingresosBrutos: number; cashCollected: number }
     } | null = null
 
     const showComparativo = granularity !== 'quarterly' && (range === '30d' || range === '90d' || range === 'all' || range === '12m' || range === '52w')
@@ -376,7 +383,7 @@ export async function GET(request: Request) {
       const mesAnteriorStart = new Date(now.getFullYear(), now.getMonth() - 1, 1)
       const mesAnteriorEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999)
 
-      const [ingresosActual, egresosActual, ingresosAnterior, egresosAnterior] = await Promise.all([
+      const [ingresosActual, egresosActual, ingresosAnterior, egresosAnterior, brutoActual, brutoAnterior, pagoDevActual, pagoDevAnterior] = await Promise.all([
         query(
           `SELECT COALESCE(SUM((monto - COALESCE(pago_desarrollador, 0)) * (COALESCE(porcentaje_hymperium, 0) / 100)), 0) as total
            FROM ingresos WHERE fecha >= $1 AND fecha <= $2 AND COALESCE(estado, 'completado') = 'completado'`,
@@ -393,6 +400,22 @@ export async function GET(request: Request) {
         ),
         query(
           `SELECT COALESCE(SUM(monto), 0) as total FROM egresos WHERE fecha >= $1 AND fecha <= $2 AND COALESCE(estado, 'completado') = 'completado'`,
+          [mesAnteriorStart, mesAnteriorEnd]
+        ),
+        query(
+          `SELECT COALESCE(SUM(monto), 0) as total FROM ingresos WHERE fecha >= $1 AND fecha <= $2 AND COALESCE(estado, 'completado') = 'completado'`,
+          [mesActualStart, mesActualEnd]
+        ),
+        query(
+          `SELECT COALESCE(SUM(monto), 0) as total FROM ingresos WHERE fecha >= $1 AND fecha <= $2 AND COALESCE(estado, 'completado') = 'completado'`,
+          [mesAnteriorStart, mesAnteriorEnd]
+        ),
+        query(
+          `SELECT COALESCE(SUM(pago_desarrollador), 0) as total FROM ingresos WHERE fecha >= $1 AND fecha <= $2 AND COALESCE(estado, 'completado') = 'completado'`,
+          [mesActualStart, mesActualEnd]
+        ),
+        query(
+          `SELECT COALESCE(SUM(pago_desarrollador), 0) as total FROM ingresos WHERE fecha >= $1 AND fecha <= $2 AND COALESCE(estado, 'completado') = 'completado'`,
           [mesAnteriorStart, mesAnteriorEnd]
         ),
       ])
@@ -401,17 +424,91 @@ export async function GET(request: Request) {
       const egrActual = parseFloat(egresosActual.rows[0]?.total || '0')
       const ingAnterior = parseFloat(ingresosAnterior.rows[0]?.total || '0')
       const egrAnterior = parseFloat(egresosAnterior.rows[0]?.total || '0')
+      const brutoAct = parseFloat(brutoActual.rows[0]?.total || '0')
+      const brutoAnt = parseFloat(brutoAnterior.rows[0]?.total || '0')
+      const pagoDevAct = parseFloat(pagoDevActual.rows[0]?.total || '0')
+      const pagoDevAnt = parseFloat(pagoDevAnterior.rows[0]?.total || '0')
 
       comparativoMensual = {
         mesActual: {
           ingresos: ingActual,
           egresos: egrActual,
           balance: ingActual - egrActual,
+          ingresosBrutos: brutoAct,
+          cashCollected: brutoAct - pagoDevAct,
         },
         mesAnterior: {
           ingresos: ingAnterior,
           egresos: egrAnterior,
           balance: ingAnterior - egrAnterior,
+          ingresosBrutos: brutoAnt,
+          cashCollected: brutoAnt - pagoDevAnt,
+        },
+      }
+    }
+
+    if (granularity === 'quarterly' && year != null && quarter != null) {
+      const now = new Date()
+      const q = quarter
+      const y = year
+      const trimActualStart = new Date(y, (q - 1) * 3, 1)
+      const trimActualEnd = new Date(y, q * 3, 0, 23, 59, 59, 999)
+      const prevQ = q === 1 ? 4 : q - 1
+      const prevY = q === 1 ? y - 1 : y
+      const trimAnteriorStart = new Date(prevY, (prevQ - 1) * 3, 1)
+      const trimAnteriorEnd = new Date(prevY, prevQ * 3, 0, 23, 59, 59, 999)
+
+      const [ingActual, egrActual, ingAnterior, egrAnterior, brutoActual, brutoAnterior, pagoDevActual, pagoDevAnterior] = await Promise.all([
+        query(
+          `SELECT COALESCE(SUM((monto - COALESCE(pago_desarrollador, 0)) * (COALESCE(porcentaje_hymperium, 0) / 100)), 0) as total
+           FROM ingresos WHERE fecha >= $1 AND fecha <= $2 AND COALESCE(estado, 'completado') = 'completado'`,
+          [trimActualStart, trimActualEnd]
+        ),
+        query(
+          `SELECT COALESCE(SUM(monto), 0) as total FROM egresos WHERE fecha >= $1 AND fecha <= $2 AND COALESCE(estado, 'completado') = 'completado'`,
+          [trimActualStart, trimActualEnd]
+        ),
+        query(
+          `SELECT COALESCE(SUM((monto - COALESCE(pago_desarrollador, 0)) * (COALESCE(porcentaje_hymperium, 0) / 100)), 0) as total
+           FROM ingresos WHERE fecha >= $1 AND fecha <= $2 AND COALESCE(estado, 'completado') = 'completado'`,
+          [trimAnteriorStart, trimAnteriorEnd]
+        ),
+        query(
+          `SELECT COALESCE(SUM(monto), 0) as total FROM egresos WHERE fecha >= $1 AND fecha <= $2 AND COALESCE(estado, 'completado') = 'completado'`,
+          [trimAnteriorStart, trimAnteriorEnd]
+        ),
+        query(
+          `SELECT COALESCE(SUM(monto), 0) as total FROM ingresos WHERE fecha >= $1 AND fecha <= $2 AND COALESCE(estado, 'completado') = 'completado'`,
+          [trimActualStart, trimActualEnd]
+        ),
+        query(
+          `SELECT COALESCE(SUM(monto), 0) as total FROM ingresos WHERE fecha >= $1 AND fecha <= $2 AND COALESCE(estado, 'completado') = 'completado'`,
+          [trimAnteriorStart, trimAnteriorEnd]
+        ),
+        query(
+          `SELECT COALESCE(SUM(pago_desarrollador), 0) as total FROM ingresos WHERE fecha >= $1 AND fecha <= $2 AND COALESCE(estado, 'completado') = 'completado'`,
+          [trimActualStart, trimActualEnd]
+        ),
+        query(
+          `SELECT COALESCE(SUM(pago_desarrollador), 0) as total FROM ingresos WHERE fecha >= $1 AND fecha <= $2 AND COALESCE(estado, 'completado') = 'completado'`,
+          [trimAnteriorStart, trimAnteriorEnd]
+        ),
+      ])
+
+      comparativoTrimestral = {
+        trimestreActual: {
+          ingresos: parseFloat(ingActual.rows[0]?.total || '0'),
+          egresos: parseFloat(egrActual.rows[0]?.total || '0'),
+          balance: parseFloat(ingActual.rows[0]?.total || '0') - parseFloat(egrActual.rows[0]?.total || '0'),
+          ingresosBrutos: parseFloat(brutoActual.rows[0]?.total || '0'),
+          cashCollected: parseFloat(brutoActual.rows[0]?.total || '0') - parseFloat(pagoDevActual.rows[0]?.total || '0'),
+        },
+        trimestreAnterior: {
+          ingresos: parseFloat(ingAnterior.rows[0]?.total || '0'),
+          egresos: parseFloat(egrAnterior.rows[0]?.total || '0'),
+          balance: parseFloat(ingAnterior.rows[0]?.total || '0') - parseFloat(egrAnterior.rows[0]?.total || '0'),
+          ingresosBrutos: parseFloat(brutoAnterior.rows[0]?.total || '0'),
+          cashCollected: parseFloat(brutoAnterior.rows[0]?.total || '0') - parseFloat(pagoDevAnterior.rows[0]?.total || '0'),
         },
       }
     }
@@ -422,6 +519,7 @@ export async function GET(request: Request) {
       quarter: granularity === 'quarterly' ? quarter : undefined,
       kpis: {
         totalIngresosBrutos: totalIngresosBrutos,
+        totalCashCollected: totalCashCollected,
         totalIngresosHymperium: totalIngresosHymperium,
         totalIngresosPendientesBrutos: totalIngresosPendientesBrutos,
         totalIngresosPendientesHymperium: totalIngresosPendientesHymperium,
@@ -443,6 +541,7 @@ export async function GET(request: Request) {
       topIngresos,
       topEgresos,
       comparativoMensual,
+      comparativoTrimestral,
     })
   } catch (error: any) {
     console.error('Error al obtener estadísticas de finanzas:', error)
