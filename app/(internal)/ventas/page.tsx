@@ -1,7 +1,11 @@
+'use client'
+
 import Link from 'next/link'
+import { RequirePermission } from '@/components/RequirePermission'
 
 export default function VentasPage() {
   return (
+    <RequirePermission permission="ventas.read" fallbackHref="/">
     <div className="p-8">
       <h1 className="text-4xl font-semibold mb-2">Ventas</h1>
       <p className="text-muted text-lg mb-8">Gestión de prospección, contenido y llamadas</p>
@@ -32,5 +36,6 @@ export default function VentasPage() {
         </Link>
       </div>
     </div>
+    </RequirePermission>
   )
 }

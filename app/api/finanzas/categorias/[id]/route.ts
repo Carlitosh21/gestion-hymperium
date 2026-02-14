@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { query } from '@/lib/db'
-import { requireInternalSession } from '@/lib/auth'
+import { requirePermission } from '@/lib/auth'
 
 export const dynamic = 'force-dynamic'
 
@@ -9,7 +9,7 @@ export async function PATCH(
   { params }: { params: { id: string } }
 ) {
   try {
-    await requireInternalSession()
+    await requirePermission('finanzas.write')
     const id = parseInt(params.id, 10)
     if (isNaN(id)) {
       return NextResponse.json({ error: 'ID inválido' }, { status: 400 })
@@ -91,6 +91,9 @@ export async function PATCH(
       throw error
     }
   } catch (error: any) {
+    if (error?.message === 'Forbidden') {
+      return NextResponse.json({ error: 'Sin permiso' }, { status: 403 })
+    }
     console.error('Error al actualizar categoría:', error)
     return NextResponse.json(
       { error: error.message },
@@ -104,7 +107,7 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    await requireInternalSession()
+    await requirePermission('finanzas.write')
     const id = parseInt(params.id, 10)
     if (isNaN(id)) {
       return NextResponse.json({ error: 'ID inválido' }, { status: 400 })
@@ -134,6 +137,9 @@ export async function DELETE(
     await query('DELETE FROM categorias_billetera WHERE id = $1', [id])
     return NextResponse.json({ success: true })
   } catch (error: any) {
+    if (error?.message === 'Forbidden') {
+      return NextResponse.json({ error: 'Sin permiso' }, { status: 403 })
+    }
     console.error('Error al eliminar categoría:', error)
     return NextResponse.json(
       { error: error.message },

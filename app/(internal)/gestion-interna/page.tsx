@@ -8,6 +8,20 @@ export default function GestionInternaPage() {
       
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <Link
+          href="/gestion-interna/usuarios"
+          className="bg-surface rounded-xl p-6 border border-border hover:bg-surface-elevated transition-colors"
+        >
+          <h2 className="text-xl font-semibold mb-2">Usuarios y Roles</h2>
+          <p className="text-muted text-sm">Gestión de usuarios internos y permisos RBAC</p>
+        </Link>
+        <Link
+          href="/gestion-interna/finanzas"
+          className="bg-surface rounded-xl p-6 border border-border hover:bg-surface-elevated transition-colors"
+        >
+          <h2 className="text-xl font-semibold mb-2">Finanzas</h2>
+          <p className="text-muted text-sm">Ingresos, egresos y billetera virtual</p>
+        </Link>
+        <Link
           href="/gestion-interna/config"
           className="bg-surface rounded-xl p-6 border border-border hover:bg-surface-elevated transition-colors"
         >

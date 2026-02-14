@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { RequirePermission } from '@/components/RequirePermission'
 
 export default function ConfigPage() {
   const [migrating, setMigrating] = useState(false)
@@ -34,6 +35,7 @@ export default function ConfigPage() {
   }
 
   return (
+    <RequirePermission permission="config.manage" fallbackHref="/gestion-interna">
     <div className="p-8 max-w-4xl">
       <h1 className="text-4xl font-semibold mb-2">Configuración</h1>
       <p className="text-muted text-lg mb-8">Gestión de configuración del sistema</p>
@@ -91,5 +93,6 @@ export default function ConfigPage() {
         </section>
       </div>
     </div>
+    </RequirePermission>
   )
 }

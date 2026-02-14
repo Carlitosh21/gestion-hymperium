@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { Search } from 'lucide-react'
+import { RequirePermission } from '@/components/RequirePermission'
 
 interface Cliente {
   id: number
@@ -13,7 +14,7 @@ interface Cliente {
   created_at: string
 }
 
-export default function ClientesPage() {
+function ClientesPageContent() {
   const [clientes, setClientes] = useState<Cliente[]>([])
   const [searchTerm, setSearchTerm] = useState('')
   const [loading, setLoading] = useState(true)
@@ -234,5 +235,13 @@ export default function ClientesPage() {
         </>
       )}
     </div>
+  )
+}
+
+export default function ClientesPage() {
+  return (
+    <RequirePermission permission="clientes.read" fallbackHref="/">
+      <ClientesPageContent />
+    </RequirePermission>
   )
 }

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { query } from '@/lib/db'
-import { requireInternalSession } from '@/lib/auth'
+import { requirePermission } from '@/lib/auth'
 
 export const dynamic = 'force-dynamic'
 
@@ -105,7 +105,7 @@ function formatLabel(
 
 export async function GET(request: Request) {
   try {
-    await requireInternalSession()
+    await requirePermission('estadisticas.view')
 
     const { searchParams } = new URL(request.url)
     const granularity = (searchParams.get('granularity') || 'daily') as Granularity
@@ -544,6 +544,9 @@ export async function GET(request: Request) {
       comparativoTrimestral,
     })
   } catch (error: any) {
+    if (error?.message === 'Forbidden') {
+      return NextResponse.json({ error: 'Sin permiso' }, { status: 403 })
+    }
     console.error('Error al obtener estadísticas de finanzas:', error)
     return NextResponse.json(
       { error: error.message || 'Error al obtener estadísticas' },

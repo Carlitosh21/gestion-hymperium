@@ -1,12 +1,12 @@
 import { NextResponse } from 'next/server'
 import { query } from '@/lib/db'
-import { requireInternalSession } from '@/lib/auth'
+import { requirePermission } from '@/lib/auth'
 
 export const dynamic = 'force-dynamic'
 
 export async function GET() {
   try {
-    await requireInternalSession()
+    await requirePermission('finanzas.read')
 
     // Total ingresos brutos (solo completados para cuentas reales)
     const ingresosResult = await query(
@@ -90,6 +90,9 @@ export async function GET() {
       categorias: categoriasConEgresos,
     })
   } catch (error: any) {
+    if (error?.message === 'Forbidden') {
+      return NextResponse.json({ error: 'Sin permiso' }, { status: 403 })
+    }
     console.error('Error al obtener billetera:', error)
     return NextResponse.json(
       { error: error.message },

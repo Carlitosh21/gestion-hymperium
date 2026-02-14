@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { query } from '@/lib/db'
-import { requireInternalSession } from '@/lib/auth'
+import { requirePermission } from '@/lib/auth'
 
 export const dynamic = 'force-dynamic'
 
@@ -33,7 +33,7 @@ function getDateRange(range: string): { startDate: Date; endDate: Date } {
 
 export async function GET(request: Request) {
   try {
-    await requireInternalSession()
+    await requirePermission('estadisticas.view')
     
     const { searchParams } = new URL(request.url)
     const range = searchParams.get('range') || '30d'
@@ -280,6 +280,9 @@ export async function GET(request: Request) {
       },
     })
   } catch (error: any) {
+    if (error?.message === 'Forbidden') {
+      return NextResponse.json({ error: 'Sin permiso' }, { status: 403 })
+    }
     console.error('Error al obtener estadísticas de ventas:', error)
     // Si hay error de tabla no existe, devolver estructura vacía
     if (error.code === '42P01') {

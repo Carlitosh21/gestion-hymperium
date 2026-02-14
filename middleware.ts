@@ -15,6 +15,7 @@ export async function middleware(request: NextRequest) {
   const publicApiRoutes = [
     '/api/auth/setup',
     '/api/auth/login',
+    '/api/auth/me',
     '/api/estadisticas/onboarding/preguntas',
     '/api/estadisticas/onboarding/submit',
     // Endpoints usados por n8n (autenticados por x-api-key en el handler)

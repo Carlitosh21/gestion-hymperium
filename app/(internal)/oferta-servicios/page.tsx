@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { RequirePermission } from '@/components/RequirePermission'
 import {
   FileText,
   Layers,
@@ -100,7 +101,7 @@ function RichTextEditor({
   return <EditorContent editor={editor} />
 }
 
-export default function OfertaServiciosPage() {
+function OfertaServiciosPageContent() {
   const [activeTab, setActiveTab] = useState<TabId>('docs')
   const [docs, setDocs] = useState<Doc[]>([])
   const [ofertas, setOfertas] = useState<Oferta[]>([])
@@ -312,6 +313,14 @@ export default function OfertaServiciosPage() {
         </div>
       )}
     </div>
+  )
+}
+
+export default function OfertaServiciosPage() {
+  return (
+    <RequirePermission permission="oferta_servicios.read" fallbackHref="/">
+      <OfertaServiciosPageContent />
+    </RequirePermission>
   )
 }
 

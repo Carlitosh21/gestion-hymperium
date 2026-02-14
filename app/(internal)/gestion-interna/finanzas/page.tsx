@@ -65,6 +65,7 @@ export default function FinanzasPage() {
   const [showFormIngreso, setShowFormIngreso] = useState(false)
   const [showFormEgreso, setShowFormEgreso] = useState(false)
   const [showFormCategoria, setShowFormCategoria] = useState(false)
+  const [sinPermiso, setSinPermiso] = useState(false)
 
   useEffect(() => {
     fetchData()
@@ -72,12 +73,19 @@ export default function FinanzasPage() {
 
   const fetchData = async () => {
     try {
+      setSinPermiso(false)
       const [billeteraRes, ingresosRes, egresosRes, categoriasRes] = await Promise.all([
         fetch('/api/finanzas/billetera'),
         fetch('/api/finanzas/ingresos'),
         fetch('/api/finanzas/egresos'),
         fetch('/api/finanzas/categorias'),
       ])
+
+      if (billeteraRes.status === 403 || ingresosRes.status === 403) {
+        setSinPermiso(true)
+        setLoading(false)
+        return
+      }
 
       setBilletera(await billeteraRes.json())
       setIngresos(await ingresosRes.json())
@@ -107,65 +115,78 @@ export default function FinanzasPage() {
         <p className="text-muted text-lg">Gestión de ingresos, egresos y billetera virtual</p>
       </div>
 
-      <div className="mb-6 flex gap-2 border-b border-border">
-        {[
-          { id: 'billetera', label: 'Billetera Virtual' },
-          { id: 'ingresos', label: 'Ingresos' },
-          { id: 'egresos', label: 'Egresos' },
-          { id: 'categorias', label: 'Categorías' },
-        ].map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id as any)}
-            className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors ${
-              activeTab === tab.id
-                ? 'border-accent text-accent'
-                : 'border-transparent text-muted hover:text-foreground'
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
+      {sinPermiso && (
+        <div className="p-6 bg-amber-500/10 border border-amber-500/30 text-amber-600 rounded-xl">
+          <p className="font-medium">No tenés permiso para ver esta sección.</p>
+          <Link href="/gestion-interna" className="text-accent hover:underline text-sm mt-2 inline-block">
+            Volver a Gestión Interna
+          </Link>
+        </div>
+      )}
 
-      {loading ? (
-        <div className="text-center py-12 text-muted">Cargando...</div>
-      ) : (
+      {!sinPermiso && (
         <>
-          {activeTab === 'billetera' && (
-            <BilleteraTab
-              billetera={billetera}
-              ingresos={ingresos}
-              egresos={egresos}
-              formatCurrency={formatCurrency}
-            />
-          )}
-          {activeTab === 'ingresos' && (
-            <IngresosTab
-              ingresos={ingresos}
-              formatCurrency={formatCurrency}
-              showForm={showFormIngreso}
-              setShowForm={setShowFormIngreso}
-              onRefresh={fetchData}
-            />
-          )}
-          {activeTab === 'egresos' && (
-            <EgresosTab
-              egresos={egresos}
-              categorias={categorias}
-              formatCurrency={formatCurrency}
-              showForm={showFormEgreso}
-              setShowForm={setShowFormEgreso}
-              onRefresh={fetchData}
-            />
-          )}
-          {activeTab === 'categorias' && (
-            <CategoriasTab
-              categorias={categorias}
-              showForm={showFormCategoria}
-              setShowForm={setShowFormCategoria}
-              onRefresh={fetchData}
-            />
+          <div className="mb-6 flex gap-2 border-b border-border">
+            {[
+              { id: 'billetera', label: 'Billetera Virtual' },
+              { id: 'ingresos', label: 'Ingresos' },
+              { id: 'egresos', label: 'Egresos' },
+              { id: 'categorias', label: 'Categorías' },
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id as any)}
+                className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors ${
+                  activeTab === tab.id
+                    ? 'border-accent text-accent'
+                    : 'border-transparent text-muted hover:text-foreground'
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+
+          {loading ? (
+            <div className="text-center py-12 text-muted">Cargando...</div>
+          ) : (
+            <>
+              {activeTab === 'billetera' && (
+                <BilleteraTab
+                  billetera={billetera}
+                  ingresos={ingresos}
+                  egresos={egresos}
+                  formatCurrency={formatCurrency}
+                />
+              )}
+              {activeTab === 'ingresos' && (
+                <IngresosTab
+                  ingresos={ingresos}
+                  formatCurrency={formatCurrency}
+                  showForm={showFormIngreso}
+                  setShowForm={setShowFormIngreso}
+                  onRefresh={fetchData}
+                />
+              )}
+              {activeTab === 'egresos' && (
+                <EgresosTab
+                  egresos={egresos}
+                  categorias={categorias}
+                  formatCurrency={formatCurrency}
+                  showForm={showFormEgreso}
+                  setShowForm={setShowFormEgreso}
+                  onRefresh={fetchData}
+                />
+              )}
+              {activeTab === 'categorias' && (
+                <CategoriasTab
+                  categorias={categorias}
+                  showForm={showFormCategoria}
+                  setShowForm={setShowFormCategoria}
+                  onRefresh={fetchData}
+                />
+              )}
+            </>
           )}
         </>
       )}

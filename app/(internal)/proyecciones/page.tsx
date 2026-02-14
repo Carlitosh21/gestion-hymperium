@@ -1,12 +1,14 @@
 'use client'
 
 import { useState } from 'react'
+import { RequirePermission } from '@/components/RequirePermission'
 
 export default function ProyeccionesPage() {
   const [tipoProyeccion, setTipoProyeccion] = useState('')
   const [filtros, setFiltros] = useState<Record<string, any>>({})
 
   return (
+    <RequirePermission permission="proyecciones.view" fallbackHref="/">
     <div className="p-8">
       <h1 className="text-4xl font-semibold mb-2">Creador de Proyecciones</h1>
       <p className="text-muted text-lg mb-8">
@@ -43,5 +45,6 @@ export default function ProyeccionesPage() {
         )}
       </div>
     </div>
+    </RequirePermission>
   )
 }

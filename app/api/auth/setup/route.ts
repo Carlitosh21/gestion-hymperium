@@ -42,15 +42,42 @@ export async function POST(request: Request) {
     // Hash de la contraseña
     const password_hash = await bcrypt.hash(password, 10)
 
-    // Crear el primer admin
+    // Crear el primer admin (con role_id si existe tabla roles y columna)
     let result: any
     try {
-      result = await query(
-        `INSERT INTO usuarios_internos (email, password_hash, role)
-         VALUES ($1, $2, 'admin')
-         RETURNING id, email, role`,
-        [email, password_hash]
-      )
+      let roleId: number | null = null
+      try {
+        const roleIdResult = await query(
+          `SELECT id FROM roles WHERE name = 'admin' LIMIT 1`
+        )
+        roleId = roleIdResult?.rows?.[0]?.id ?? null
+      } catch {
+        // Tabla roles puede no existir (migración 016 no corrida)
+      }
+
+      try {
+        if (roleId != null) {
+          result = await query(
+            `INSERT INTO usuarios_internos (email, password_hash, role, role_id)
+             VALUES ($1, $2, 'admin', $3)
+             RETURNING id, email, role`,
+            [email, password_hash, roleId]
+          )
+        } else {
+          throw new Error('NO_ROLE_ID')
+        }
+      } catch (insertErr: any) {
+        if (insertErr.message === 'NO_ROLE_ID' || insertErr?.code === '42703') {
+          result = await query(
+            `INSERT INTO usuarios_internos (email, password_hash, role)
+             VALUES ($1, $2, 'admin')
+             RETURNING id, email, role`,
+            [email, password_hash]
+          )
+        } else {
+          throw insertErr
+        }
+      }
     } catch (error: any) {
       // Migraciones no corridas: la tabla puede no existir todavía.
       if (error?.code === '42P01') {

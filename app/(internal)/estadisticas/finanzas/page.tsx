@@ -121,6 +121,7 @@ export default function FinanzasStatsPage() {
   const [loading, setLoading] = useState(true)
   const [stats, setStats] = useState<StatsData | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [sinPermiso, setSinPermiso] = useState(false)
 
   const rangeOptions =
     granularity === 'daily' ? RANGE_DAILY : granularity === 'weekly' ? RANGE_WEEKLY : granularity === 'monthly' ? RANGE_MONTHLY : []
@@ -144,6 +145,7 @@ export default function FinanzasStatsPage() {
   const fetchStats = async () => {
     setLoading(true)
     setError(null)
+    setSinPermiso(false)
     try {
       const params = new URLSearchParams()
       params.set('granularity', granularity)
@@ -154,6 +156,11 @@ export default function FinanzasStatsPage() {
         params.set('range', range)
       }
       const response = await fetch(`/api/estadisticas/finanzas?${params}`)
+      if (response.status === 403) {
+        setSinPermiso(true)
+        setLoading(false)
+        return
+      }
       if (!response.ok) {
         throw new Error('Error al cargar estadísticas')
       }
@@ -187,6 +194,22 @@ export default function FinanzasStatsPage() {
           : granularity === 'quarterly'
             ? `Q${quarter} ${year}`
             : 'por Trimestre'
+
+  if (sinPermiso) {
+    return (
+      <div className="p-8">
+        <div className="p-6 bg-amber-500/10 border border-amber-500/30 text-amber-600 rounded-xl">
+          <p className="font-medium">No tenés permiso para ver esta sección.</p>
+          <button
+            onClick={() => router.push('/estadisticas')}
+            className="text-accent hover:underline text-sm mt-2 inline-block"
+          >
+            Volver a Estadísticas
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="p-8">

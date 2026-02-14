@@ -2,21 +2,40 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { useEffect, useState } from 'react'
 import { Home, Briefcase, Users, BarChart3, TrendingUp, DollarSign, Layers, Settings } from 'lucide-react'
 
-const menuItems = [
-  { href: '/', label: 'Inicio', icon: Home },
-  { href: '/ventas', label: 'Ventas', icon: Briefcase },
-  { href: '/clientes', label: 'Clientes', icon: Users },
-  { href: '/estadisticas', label: 'Estadísticas', icon: BarChart3 },
-  { href: '/proyecciones', label: 'Proyecciones', icon: TrendingUp },
-  { href: '/gestion-interna/finanzas', label: 'Finanzas', icon: DollarSign },
-  { href: '/oferta-servicios', label: 'Oferta y Servicios', icon: Layers },
-  { href: '/gestion-interna', label: 'Gestión Interna', icon: Settings },
+const ALL_MENU_ITEMS = [
+  { href: '/', label: 'Inicio', icon: Home, permissions: null as string[] | null },
+  { href: '/ventas', label: 'Ventas', icon: Briefcase, permissions: ['ventas.read'] },
+  { href: '/clientes', label: 'Clientes', icon: Users, permissions: ['clientes.read'] },
+  { href: '/estadisticas', label: 'Estadísticas', icon: BarChart3, permissions: ['estadisticas.view'] },
+  { href: '/proyecciones', label: 'Proyecciones', icon: TrendingUp, permissions: ['proyecciones.view'] },
+  { href: '/gestion-interna/finanzas', label: 'Finanzas', icon: DollarSign, permissions: ['finanzas.read'] },
+  { href: '/oferta-servicios', label: 'Oferta y Servicios', icon: Layers, permissions: ['oferta_servicios.read'] },
+  { href: '/gestion-interna', label: 'Gestión Interna', icon: Settings, permissions: ['config.manage', 'users.manage', 'finanzas.read'] },
 ]
+
+function canAccess(permissions: string[] | null, userPerms: string[]): boolean {
+  if (!permissions || permissions.length === 0) return true
+  if (userPerms.includes('*')) return true
+  return permissions.some((p) => userPerms.includes(p))
+}
 
 export function Navigation() {
   const pathname = usePathname()
+  const [permissions, setPermissions] = useState<string[]>([])
+
+  useEffect(() => {
+    fetch('/api/auth/me')
+      .then((res) => res.json())
+      .then((data) => {
+        setPermissions(data?.user?.permissions || [])
+      })
+      .catch(() => setPermissions([]))
+  }, [])
+
+  const menuItems = ALL_MENU_ITEMS.filter((item) => canAccess(item.permissions, permissions))
 
   // Activar solo el item con el href más específico que matchea (evitar doble active)
   const bestMatchHref = menuItems

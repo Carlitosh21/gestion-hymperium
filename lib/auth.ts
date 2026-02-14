@@ -126,3 +126,116 @@ export async function hasAdmin(): Promise<boolean> {
     throw error
   }
 }
+
+export interface InternalUser {
+  id: number
+  email: string
+  role: string
+  roleId: number | null
+  roleName: string | null
+  permissions: string[]
+  activo: boolean
+}
+
+export async function getInternalUserFromSession(): Promise<InternalUser | null> {
+  const session = await getCurrentSession()
+  if (!session || session.kind !== 'internal' || !session.internal_user_id) {
+    return null
+  }
+
+  try {
+    const result = await query(
+      `SELECT u.id, u.email, u.role, u.role_id, u.activo,
+              r.name AS role_name,
+              COALESCE(
+                (SELECT array_agg(p.key) FROM role_permissions rp
+                 JOIN permissions p ON p.id = rp.permission_id
+                 WHERE rp.role_id = u.role_id),
+                ARRAY[]::text[]
+              ) AS permissions
+       FROM usuarios_internos u
+       LEFT JOIN roles r ON r.id = u.role_id
+       WHERE u.id = $1 AND COALESCE(u.activo, true) = true`,
+      [session.internal_user_id]
+    )
+
+    if (result.rows.length === 0) {
+      return null
+    }
+
+    const row = result.rows[0]
+    let permissions: string[] = row.permissions || []
+    if (Array.isArray(permissions) && permissions.length === 1 && permissions[0] === null) {
+      permissions = []
+    }
+
+    // Fallback: si no hay role_id (pre-RBAC) y role='admin', tiene todos los permisos
+    if (!row.role_id && row.role === 'admin') {
+      permissions = ['*']
+    }
+
+    return {
+      id: row.id,
+      email: row.email,
+      role: row.role || 'staff',
+      roleId: row.role_id,
+      roleName: row.role_name,
+      permissions: permissions || [],
+      activo: row.activo !== false,
+    }
+  } catch (error: any) {
+    if (error?.code === '42P01' || error?.code === '42703') {
+      // Tablas RBAC no existen aún: fallback a role legacy
+      const legacy = await query(
+        'SELECT id, email, role FROM usuarios_internos WHERE id = $1',
+        [session.internal_user_id]
+      )
+      if (legacy.rows.length === 0) return null
+      const u = legacy.rows[0]
+      return {
+        id: u.id,
+        email: u.email,
+        role: u.role || 'admin',
+        roleId: null,
+        roleName: null,
+        permissions: u.role === 'admin' ? ['*'] : [],
+        activo: true,
+      }
+    }
+    throw error
+  }
+}
+
+export function userHasPermission(user: InternalUser, permission: string): boolean {
+  if (!user) return false
+  if (user.permissions.includes('*')) return true
+  return user.permissions.includes(permission)
+}
+
+export async function requirePermission(permission: string): Promise<InternalUser> {
+  await requireInternalSession()
+  const user = await getInternalUserFromSession()
+  if (!user) {
+    throw new Error('Unauthorized')
+  }
+  if (userHasPermission(user, permission)) {
+    return user
+  }
+  throw new Error('Forbidden')
+}
+
+export async function requireAnyPermission(permissions: string[]): Promise<InternalUser> {
+  await requireInternalSession()
+  const user = await getInternalUserFromSession()
+  if (!user) {
+    throw new Error('Unauthorized')
+  }
+  if (user.permissions.includes('*')) {
+    return user
+  }
+  const hasAny = permissions.some((p) => user.permissions.includes(p))
+  if (hasAny) {
+    return user
+  }
+  throw new Error('Forbidden')
+}

@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation'
 import { TrendingUp, Users, Phone, DollarSign, Video, BarChart3 } from 'lucide-react'
+import { RequirePermission } from '@/components/RequirePermission'
 
 export default function EstadisticasPage() {
   const router = useRouter()
@@ -46,6 +47,7 @@ export default function EstadisticasPage() {
   ]
 
   return (
+    <RequirePermission permission="estadisticas.view" fallbackHref="/">
     <div className="p-8">
       <div className="mb-8">
         <h1 className="text-4xl font-semibold mb-2">Estadísticas</h1>
@@ -88,5 +90,6 @@ export default function EstadisticasPage() {
         })}
       </div>
     </div>
+    </RequirePermission>
   )
 }

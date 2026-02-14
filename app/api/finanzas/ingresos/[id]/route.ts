@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { query } from '@/lib/db'
-import { requireInternalSession } from '@/lib/auth'
+import { requirePermission } from '@/lib/auth'
 
 export const dynamic = 'force-dynamic'
 
@@ -9,7 +9,7 @@ export async function PATCH(
   { params }: { params: { id: string } }
 ) {
   try {
-    await requireInternalSession()
+    await requirePermission('finanzas.write')
     const body = await request.json()
     const {
       monto,
@@ -64,6 +64,9 @@ export async function PATCH(
 
     return NextResponse.json(result.rows[0])
   } catch (error: any) {
+    if (error?.message === 'Forbidden') {
+      return NextResponse.json({ error: 'Sin permiso' }, { status: 403 })
+    }
     console.error('Error al actualizar ingreso:', error)
     return NextResponse.json(
       { error: error.message },
@@ -77,7 +80,7 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    await requireInternalSession()
+    await requirePermission('finanzas.write')
 
     const result = await query('DELETE FROM ingresos WHERE id = $1', [params.id])
 
@@ -90,6 +93,9 @@ export async function DELETE(
 
     return NextResponse.json({ success: true })
   } catch (error: any) {
+    if (error?.message === 'Forbidden') {
+      return NextResponse.json({ error: 'Sin permiso' }, { status: 403 })
+    }
     console.error('Error al eliminar ingreso:', error)
     return NextResponse.json(
       { error: error.message },
