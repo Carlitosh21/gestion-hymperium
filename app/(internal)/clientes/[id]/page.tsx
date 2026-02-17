@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Plus, Edit2, Trash2, Copy, ExternalLink } from 'lucide-react'
+import { Plus, Edit2, Trash2, Copy, ExternalLink, Key } from 'lucide-react'
 
 interface Cliente {
   id: number
@@ -50,6 +50,8 @@ export default function ClienteDetailPage() {
   const [resultados, setResultados] = useState<Resultado[]>([])
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<'overview' | 'recursos' | 'tareas' | 'ficha' | 'resultados' | 'onboarding'>('overview')
+  const [showPasswordForm, setShowPasswordForm] = useState(false)
+  const [nuevaPassword, setNuevaPassword] = useState('')
 
   useEffect(() => {
     if (clienteId) {
@@ -137,6 +139,32 @@ export default function ClienteDetailPage() {
     } catch (error) {
       console.error('Error al eliminar cliente:', error)
       alert('Error al eliminar cliente')
+    }
+  }
+
+  const handleCambiarPassword = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!nuevaPassword || nuevaPassword.length < 6) {
+      alert('La contraseña debe tener al menos 6 caracteres')
+      return
+    }
+    try {
+      const response = await fetch(`/api/clientes/${clienteId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: nuevaPassword }),
+      })
+      if (response.ok) {
+        setShowPasswordForm(false)
+        setNuevaPassword('')
+        alert('Contraseña actualizada. El cliente ya puede iniciar sesión en el portal.')
+      } else {
+        const err = await response.json()
+        alert(err.error || 'Error al actualizar contraseña')
+      }
+    } catch (error) {
+      console.error('Error al cambiar contraseña:', error)
+      alert('Error al cambiar contraseña')
     }
   }
 
@@ -252,6 +280,45 @@ export default function ClienteDetailPage() {
                     <code className="bg-surface-elevated px-2 py-1 rounded">{cliente.numero_identificacion}</code>
                   </div>
                 </div>
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold mb-3">Acceso al Portal</h3>
+                <p className="text-sm text-muted mb-3">
+                  El cliente inicia sesión en <code className="bg-surface-elevated px-1 rounded">/portal/login</code> con su email y contraseña.
+                </p>
+                {showPasswordForm ? (
+                  <form onSubmit={handleCambiarPassword} className="flex flex-wrap items-end gap-3">
+                    <div>
+                      <label className="block text-sm font-medium mb-1">Nueva contraseña</label>
+                      <input
+                        type="password"
+                        value={nuevaPassword}
+                        onChange={(e) => setNuevaPassword(e.target.value)}
+                        placeholder="Mínimo 6 caracteres"
+                        minLength={6}
+                        className="px-4 py-2 border border-border rounded-lg bg-background"
+                      />
+                    </div>
+                    <button type="submit" className="px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent-hover transition-colors">
+                      Guardar
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { setShowPasswordForm(false); setNuevaPassword('') }}
+                      className="px-4 py-2 border border-border rounded-lg hover:bg-surface-elevated transition-colors"
+                    >
+                      Cancelar
+                    </button>
+                  </form>
+                ) : (
+                  <button
+                    onClick={() => setShowPasswordForm(true)}
+                    className="flex items-center gap-2 px-4 py-2 bg-surface border border-border rounded-lg hover:bg-surface-elevated transition-colors"
+                  >
+                    <Key className="w-4 h-4" />
+                    Cambiar contraseña del cliente
+                  </button>
+                )}
               </div>
             </div>
           )}

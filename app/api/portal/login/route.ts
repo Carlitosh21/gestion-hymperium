@@ -34,6 +34,14 @@ export async function POST(request: Request) {
 
     const cliente = result.rows[0]
 
+    // Si no tiene contraseña configurada, no puede iniciar sesión
+    if (!cliente.password_hash) {
+      return NextResponse.json(
+        { error: 'Este cliente no tiene contraseña configurada. Contactá al administrador.' },
+        { status: 401 }
+      )
+    }
+
     // Verificar contraseña
     const isValid = await bcrypt.compare(password, cliente.password_hash)
     if (!isValid) {

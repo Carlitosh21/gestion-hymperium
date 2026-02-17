@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { query } from '@/lib/db'
 import { requireInternalSession } from '@/lib/auth'
+const bcrypt = require('bcryptjs')
 
 export const dynamic = 'force-dynamic'
 
@@ -11,7 +12,9 @@ export async function GET(
   try {
     await requireInternalSession()
     const result = await query(
-      'SELECT * FROM clientes WHERE id = $1',
+      `SELECT id, nombre, email, telefono, estado_entrega, cotizacion, entregables,
+              llamada_id, numero_identificacion, created_at, updated_at
+       FROM clientes WHERE id = $1`,
       [params.id]
     )
 
@@ -39,7 +42,7 @@ export async function PATCH(
   try {
     await requireInternalSession()
     const body = await request.json()
-    const { estado_entrega, cotizacion, entregables } = body
+    const { estado_entrega, cotizacion, entregables, password } = body
 
     const updates: string[] = []
     const values: any[] = []
@@ -58,6 +61,12 @@ export async function PATCH(
     if (entregables !== undefined) {
       updates.push(`entregables = $${paramIndex++}`)
       values.push(entregables)
+    }
+
+    if (password !== undefined && password !== '') {
+      const password_hash = await bcrypt.hash(password, 10)
+      updates.push(`password_hash = $${paramIndex++}`)
+      values.push(password_hash)
     }
 
     if (updates.length === 0) {
