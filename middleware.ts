@@ -16,6 +16,7 @@ export async function middleware(request: NextRequest) {
     '/api/auth/setup',
     '/api/auth/login',
     '/api/auth/me',
+    '/api/portal/login',
     '/api/estadisticas/onboarding/preguntas',
     '/api/estadisticas/onboarding/submit',
   ]
