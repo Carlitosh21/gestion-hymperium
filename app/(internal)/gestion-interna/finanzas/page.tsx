@@ -11,9 +11,6 @@ interface Ingreso {
   proyecto_id: number | null
   tipo_proyecto: string | null
   pago_desarrollador: number
-  porcentaje_carlitos: number
-  porcentaje_joaco: number
-  porcentaje_hymperium: number
   fecha: string
   estado?: string
 }
@@ -42,16 +39,15 @@ type EgresoEstado = 'pendiente' | 'completado'
 type EgresoFormData = { monto: string; descripcion: string; categoria: string; proyecto_id: string; fecha: string; estado: EgresoEstado }
 
 type IngresoEstado = 'pendiente' | 'completado'
-type IngresoFormData = { monto: string; descripcion: string; proyecto_id: string; tipo_proyecto: string; pago_desarrollador: string; porcentaje_carlitos: string; porcentaje_joaco: string; porcentaje_hymperium: string; fecha: string; estado: IngresoEstado }
+type IngresoFormData = { monto: string; descripcion: string; proyecto_id: string; tipo_proyecto: string; pago_desarrollador: string; fecha: string; estado: IngresoEstado }
 
 interface Billetera {
   total_ingresos: number
-  total_ingresos_hymperium: number
+  total_ingresos_netos: number
   total_ingresos_pendientes?: number
-  total_ingresos_hymperium_pendientes?: number
+  total_ingresos_netos_pendientes?: number
   total_egresos: number
   total_disponible: number
-  total_disponible_hymperium: number
   categorias: Categoria[]
 }
 
@@ -216,7 +212,7 @@ function BilleteraTab({
       tipo: 'ingreso' as const,
       fecha: i.fecha,
       descripcion: i.descripcion || 'Ingreso',
-      monto: ((i.monto - (i.pago_desarrollador || 0)) * ((i.porcentaje_hymperium || 0) / 100)),
+      monto: (i.monto - (i.pago_desarrollador || 0)),
     })),
     ...egresos.map((e) => ({
       id: `egr-${e.id}`,
@@ -233,15 +229,15 @@ function BilleteraTab({
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="bg-surface rounded-xl p-6 border border-border">
-          <h3 className="text-sm text-muted mb-2">Cuenta Hymperium — Saldo</h3>
+          <h3 className="text-sm text-muted mb-2">Saldo Agencia</h3>
           <p className="text-2xl font-semibold">
-            {formatCurrency(billetera.total_disponible_hymperium)}
+            {formatCurrency(billetera.total_disponible)}
           </p>
         </div>
         <div className="bg-surface rounded-xl p-6 border border-border">
-          <h3 className="text-sm text-muted mb-2">Ingresos Hymperium</h3>
+          <h3 className="text-sm text-muted mb-2">Ingresos Netos</h3>
           <p className="text-2xl font-semibold text-green-600">
-            {formatCurrency(billetera.total_ingresos_hymperium)}
+            {formatCurrency(billetera.total_ingresos_netos)}
           </p>
         </div>
         <div className="bg-surface rounded-xl p-6 border border-border">
@@ -333,9 +329,6 @@ const emptyIngresoForm: IngresoFormData = {
   proyecto_id: '',
   tipo_proyecto: '',
   pago_desarrollador: '',
-  porcentaje_carlitos: '',
-  porcentaje_joaco: '',
-  porcentaje_hymperium: '',
   fecha: new Date().toISOString().slice(0, 10),
   estado: 'completado',
 }
@@ -367,9 +360,6 @@ function IngresosTab({
         proyecto_id: editIngreso.proyecto_id ? String(editIngreso.proyecto_id) : '',
         tipo_proyecto: editIngreso.tipo_proyecto || '',
         pago_desarrollador: String(editIngreso.pago_desarrollador ?? 0),
-        porcentaje_carlitos: String(editIngreso.porcentaje_carlitos ?? 0),
-        porcentaje_joaco: String(editIngreso.porcentaje_joaco ?? 0),
-        porcentaje_hymperium: String(editIngreso.porcentaje_hymperium ?? 0),
         fecha: editIngreso.fecha ? editIngreso.fecha.slice(0, 10) : new Date().toISOString().slice(0, 10),
         estado: editIngreso.estado === 'pendiente' ? 'pendiente' : 'completado',
       })
@@ -387,9 +377,6 @@ function IngresosTab({
         proyecto_id: formData.proyecto_id ? parseInt(formData.proyecto_id) : null,
         tipo_proyecto: formData.tipo_proyecto || null,
         pago_desarrollador: parseFloat(formData.pago_desarrollador) || 0,
-        porcentaje_carlitos: parseFloat(formData.porcentaje_carlitos) || 0,
-        porcentaje_joaco: parseFloat(formData.porcentaje_joaco) || 0,
-        porcentaje_hymperium: parseFloat(formData.porcentaje_hymperium) || 0,
         fecha: formData.fecha || new Date().toISOString(),
         estado: formData.estado,
       }
@@ -456,9 +443,6 @@ function IngresosTab({
         proyecto_id: duplicateIngreso.proyecto_id,
         tipo_proyecto: duplicateIngreso.tipo_proyecto || null,
         pago_desarrollador: duplicateIngreso.pago_desarrollador ?? 0,
-        porcentaje_carlitos: duplicateIngreso.porcentaje_carlitos ?? 0,
-        porcentaje_joaco: duplicateIngreso.porcentaje_joaco ?? 0,
-        porcentaje_hymperium: duplicateIngreso.porcentaje_hymperium ?? 0,
         fecha: duplicateFecha || new Date().toISOString(),
         estado: duplicateIngreso.estado === 'pendiente' ? 'pendiente' : 'completado',
       }
@@ -562,42 +546,12 @@ function IngresosTab({
               />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-2">Pago Desarrollador</label>
+              <label className="block text-sm font-medium mb-2">Coste de Implementacion</label>
               <input
                 type="number"
                 step="0.01"
                 value={formData.pago_desarrollador}
                 onChange={(e) => setFormData({ ...formData, pago_desarrollador: e.target.value })}
-                className="w-full px-4 py-2 border border-border rounded-lg bg-background"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-2">% Carlitos</label>
-              <input
-                type="number"
-                step="0.01"
-                value={formData.porcentaje_carlitos}
-                onChange={(e) => setFormData({ ...formData, porcentaje_carlitos: e.target.value })}
-                className="w-full px-4 py-2 border border-border rounded-lg bg-background"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-2">% Joaco</label>
-              <input
-                type="number"
-                step="0.01"
-                value={formData.porcentaje_joaco}
-                onChange={(e) => setFormData({ ...formData, porcentaje_joaco: e.target.value })}
-                className="w-full px-4 py-2 border border-border rounded-lg bg-background"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-2">% Hymperium</label>
-              <input
-                type="number"
-                step="0.01"
-                value={formData.porcentaje_hymperium}
-                onChange={(e) => setFormData({ ...formData, porcentaje_hymperium: e.target.value })}
                 className="w-full px-4 py-2 border border-border rounded-lg bg-background"
               />
             </div>
@@ -660,14 +614,6 @@ function IngresosTab({
                   </button>
                 </div>
               </div>
-              {(ingreso.porcentaje_carlitos > 0 ||
-                ingreso.porcentaje_joaco > 0 ||
-                ingreso.porcentaje_hymperium > 0) && (
-                <div className="text-xs text-muted mt-2">
-                  Distribución: Carlitos {ingreso.porcentaje_carlitos}%, Joaco{' '}
-                  {ingreso.porcentaje_joaco}%, Hymperium {ingreso.porcentaje_hymperium}%
-                </div>
-              )}
             </div>
           ))}
         </div>

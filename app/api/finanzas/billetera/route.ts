@@ -8,32 +8,31 @@ export async function GET() {
   try {
     await requirePermission('finanzas.read')
 
-    // Total ingresos brutos (solo completados para cuentas reales)
+    // Total ingresos brutos (solo completados)
     const ingresosResult = await query(
       `SELECT COALESCE(SUM(monto), 0) as total FROM ingresos WHERE COALESCE(estado, 'completado') = 'completado'`
     )
     const totalIngresos = parseFloat(ingresosResult.rows[0].total)
 
-    // Ingresos Hymperium (solo completados): (monto - pago_desarrollador) * (porcentaje_hymperium / 100)
-    const hymperiumResult = await query(`
-      SELECT COALESCE(SUM((monto - COALESCE(pago_desarrollador, 0)) * (COALESCE(porcentaje_hymperium, 0) / 100)), 0) as total
-      FROM ingresos
-      WHERE COALESCE(estado, 'completado') = 'completado'
+    // Ingresos netos agencia (monto - coste implementación), todo entra a la cuenta de la agencia
+    const ingresosNetosResult = await query(`
+      SELECT COALESCE(SUM(monto - COALESCE(pago_desarrollador, 0)), 0) as total
+      FROM ingresos WHERE COALESCE(estado, 'completado') = 'completado'
     `)
-    const totalIngresosHymperium = parseFloat(hymperiumResult.rows[0].total)
+    const totalIngresosNetos = parseFloat(ingresosNetosResult.rows[0].total)
 
     // Ingresos pendientes (no afectan cuentas reales)
     const ingresosPendientesResult = await query(
       `SELECT COALESCE(SUM(monto), 0) as total FROM ingresos WHERE estado = 'pendiente'`
     )
     const totalIngresosPendientes = parseFloat(ingresosPendientesResult.rows[0].total)
-    const ingresosHymperiumPendientesResult = await query(`
-      SELECT COALESCE(SUM((monto - COALESCE(pago_desarrollador, 0)) * (COALESCE(porcentaje_hymperium, 0) / 100)), 0) as total
+    const ingresosNetosPendientesResult = await query(`
+      SELECT COALESCE(SUM(monto - COALESCE(pago_desarrollador, 0)), 0) as total
       FROM ingresos WHERE estado = 'pendiente'
     `)
-    const totalIngresosHymperiumPendientes = parseFloat(ingresosHymperiumPendientesResult.rows[0].total)
+    const totalIngresosNetosPendientes = parseFloat(ingresosNetosPendientesResult.rows[0].total)
 
-    // Total egresos (solo completados para cuentas reales)
+    // Total egresos (solo completados)
     const egresosResult = await query(
       `SELECT COALESCE(SUM(monto), 0) as total FROM egresos WHERE COALESCE(estado, 'completado') = 'completado'`
     )
@@ -44,18 +43,17 @@ export async function GET() {
     )
     const totalEgresosPendientes = parseFloat(egresosPendientesResult.rows[0].total)
 
-    const totalDisponible = totalIngresos - totalEgresos
-    const totalDisponibleHymperium = totalIngresosHymperium - totalEgresos
+    const totalDisponible = totalIngresosNetos - totalEgresos
 
     // Obtener categorías
     const categoriasResult = await query(
       'SELECT * FROM categorias_billetera ORDER BY nombre'
     )
 
-    // Calcular montos por categoría según porcentajes (usando plata Hymperium)
+    // Calcular montos por categoría según porcentajes (usando disponible de agencia)
     const categorias = categoriasResult.rows.map((cat) => ({
       ...cat,
-      monto_asignado: (totalDisponibleHymperium * parseFloat(cat.porcentaje)) / 100,
+      monto_asignado: (totalDisponible * parseFloat(cat.porcentaje)) / 100,
     }))
 
     // Calcular egresos por categoría (solo completados)
@@ -75,18 +73,17 @@ export async function GET() {
       ...cat,
       monto_gastado: egresosMap[cat.nombre] || 0,
       monto_disponible:
-        (totalDisponibleHymperium * parseFloat(cat.porcentaje)) / 100 - (egresosMap[cat.nombre] || 0),
+        (totalDisponible * parseFloat(cat.porcentaje)) / 100 - (egresosMap[cat.nombre] || 0),
     }))
 
     return NextResponse.json({
       total_ingresos: totalIngresos,
-      total_ingresos_hymperium: totalIngresosHymperium,
+      total_ingresos_netos: totalIngresosNetos,
       total_ingresos_pendientes: totalIngresosPendientes,
-      total_ingresos_hymperium_pendientes: totalIngresosHymperiumPendientes,
+      total_ingresos_netos_pendientes: totalIngresosNetosPendientes,
       total_egresos: totalEgresos,
       total_egresos_pendientes: totalEgresosPendientes,
       total_disponible: totalDisponible,
-      total_disponible_hymperium: totalDisponibleHymperium,
       categorias: categoriasConEgresos,
     })
   } catch (error: any) {

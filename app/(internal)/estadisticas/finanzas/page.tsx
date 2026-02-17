@@ -38,32 +38,28 @@ interface StatsData {
   kpis: {
     totalIngresosBrutos: number
     totalCashCollected?: number
-    totalIngresosHymperium: number
+    totalIngresosNetos: number
     totalIngresosPendientesBrutos: number
-    totalIngresosPendientesHymperium: number
-    totalIngresosCarlitos: number
-    totalIngresosJoaco: number
-    totalPagosDevs: number
+    totalIngresosNetosPendientes: number
+    totalCosteImplementacion: number
     totalEgresos: number
     totalEgresosPendientes: number
     balance: number
-    margenHymperium: number
+    margenNeto: number
     tasaEgreso: number
   }
   timeseriesIngresos: Array<{
     dia: string
     bruto: number
-    hymperium: number
-    carlitos: number
-    joaco: number
-    pagos_devs: number
+    neto: number
+    coste_implementacion: number
   }>
   timeseriesEgresos: Array<{ dia: string; monto: number }>
   timeseriesEgresosPendientes?: Array<{ dia: string; monto: number }>
-  timeseriesIngresosPendientes?: Array<{ dia: string; bruto: number; hymperium: number }>
+  timeseriesIngresosPendientes?: Array<{ dia: string; bruto: number; neto: number }>
   flujoCaja: Array<{ dia: string; ingresos: number; ingresos_pendientes?: number; egresos: number; egresos_pendientes?: number }>
   egresosPorCategoria: Array<{ categoria: string; total: number; porcentaje: number }>
-  topIngresos: Array<{ id: number; descripcion: string; monto: number; hymperium: number; fecha: string }>
+  topIngresos: Array<{ id: number; descripcion: string; monto: number; neto: number; fecha: string }>
   topEgresos: Array<{ id: number; descripcion: string; categoria: string; monto: number; fecha: string }>
   comparativoMensual: {
     mesActual: { ingresos: number; egresos: number; balance: number; ingresosBrutos?: number; cashCollected?: number }
@@ -328,18 +324,18 @@ export default function FinanzasStatsPage() {
                 </div>
                 <p className="text-sm text-muted">Cash Collected</p>
                 <p className="text-2xl font-bold text-cyan-500">
-                  {formatCurrency(stats.kpis.totalCashCollected ?? (stats.kpis.totalIngresosBrutos - (stats.kpis.totalPagosDevs ?? 0)))}
+                  {formatCurrency(stats.kpis.totalCashCollected ?? (stats.kpis.totalIngresosBrutos - (stats.kpis.totalCosteImplementacion ?? 0)))}
                 </p>
-                <p className="text-xs text-muted mt-1">Ingresos Brutos - Pago a Dev</p>
+                <p className="text-xs text-muted mt-1">Ingresos Brutos - Coste Implementación</p>
               </div>
 
               <div className="bg-surface rounded-xl p-6 border border-border">
                 <div className="flex items-center justify-between mb-2">
                   <DollarSign className="w-5 h-5 text-emerald-500" />
                 </div>
-                <p className="text-sm text-muted">Ingresos Hymperium reales</p>
+                <p className="text-sm text-muted">Ingresos Netos</p>
                 <p className="text-2xl font-bold text-emerald-500">
-                  {formatCurrency(stats.kpis.totalIngresosHymperium)}
+                  {formatCurrency(stats.kpis.totalIngresosNetos)}
                 </p>
                 <p className="text-xs text-muted mt-1">Completados (suman caja)</p>
               </div>
@@ -350,7 +346,7 @@ export default function FinanzasStatsPage() {
                 </div>
                 <p className="text-sm text-muted">Ingresos pendientes</p>
                 <p className="text-2xl font-bold text-amber-500">
-                  {formatCurrency(stats.kpis.totalIngresosPendientesHymperium ?? 0)}
+                  {formatCurrency(stats.kpis.totalIngresosNetosPendientes ?? 0)}
                 </p>
                 <p className="text-xs text-muted mt-1">No afectan balance</p>
               </div>
@@ -395,9 +391,9 @@ export default function FinanzasStatsPage() {
                 <div className="flex items-center justify-between mb-2">
                   <Percent className="w-5 h-5 text-indigo-500" />
                 </div>
-                <p className="text-sm text-muted">Margen Hymperium</p>
+                <p className="text-sm text-muted">Margen Neto</p>
                 <p className="text-2xl font-bold text-indigo-500">
-                  {formatPercent(stats.kpis.margenHymperium)}%
+                  {formatPercent(stats.kpis.margenNeto)}%
                 </p>
               </div>
 
@@ -413,7 +409,7 @@ export default function FinanzasStatsPage() {
             </div>
           </section>
 
-          {/* Desglose: Ingresos míos, Carlitos, Joaco, Pagos Devs */}
+          {/* Desglose: Coste Implementación */}
           <section className="mb-12">
             <div className="flex items-center gap-3 mb-6">
               <DollarSign className="w-6 h-6 text-indigo-500" />
@@ -421,29 +417,17 @@ export default function FinanzasStatsPage() {
             </div>
             <p className="text-sm text-muted mb-4">Solo ingresos completados (cuentas reales)</p>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="bg-surface rounded-xl p-6 border border-border">
-                <p className="text-sm text-muted">Ingresos Carlitos</p>
-                <p className="text-2xl font-bold text-indigo-500">
-                  {formatCurrency(stats.kpis.totalIngresosCarlitos ?? 0)}
-                </p>
-              </div>
-              <div className="bg-surface rounded-xl p-6 border border-border">
-                <p className="text-sm text-muted">Ingresos Joaco</p>
-                <p className="text-2xl font-bold text-violet-500">
-                  {formatCurrency(stats.kpis.totalIngresosJoaco ?? 0)}
-                </p>
-              </div>
-              <div className="bg-surface rounded-xl p-6 border border-border">
-                <p className="text-sm text-muted">Pagos a Desarrolladores</p>
+                <p className="text-sm text-muted">Coste de Implementación</p>
                 <p className="text-2xl font-bold text-amber-500">
-                  {formatCurrency(stats.kpis.totalPagosDevs ?? 0)}
+                  {formatCurrency(stats.kpis.totalCosteImplementacion ?? 0)}
                 </p>
               </div>
               <div className="bg-surface rounded-xl p-6 border border-border">
-                <p className="text-sm text-muted">Ingresos Míos (Carlitos + Joaco)</p>
+                <p className="text-sm text-muted">Ingresos Netos (Agencia)</p>
                 <p className="text-2xl font-bold text-cyan-500">
-                  {formatCurrency((stats.kpis.totalIngresosCarlitos ?? 0) + (stats.kpis.totalIngresosJoaco ?? 0))}
+                  {formatCurrency(stats.kpis.totalIngresosNetos ?? 0)}
                 </p>
               </div>
             </div>
@@ -457,7 +441,7 @@ export default function FinanzasStatsPage() {
             </div>
 
             <div className="bg-surface rounded-xl p-6 border border-border">
-              <h3 className="text-lg font-semibold mb-4">Ingresos Hymperium vs Egresos ({chartSubtitle})</h3>
+              <h3 className="text-lg font-semibold mb-4">Ingresos Netos vs Egresos ({chartSubtitle})</h3>
               <p className="text-sm text-muted mb-4">Solo completados afectan el balance. Ingresos y egresos pendientes se muestran aparte.</p>
               {stats.flujoCaja.some((d) => d.ingresos > 0 || d.egresos > 0 || (d.ingresos_pendientes ?? 0) > 0 || (d.egresos_pendientes ?? 0) > 0) ? (
                 <ResponsiveContainer width="100%" height={300}>
@@ -484,7 +468,7 @@ export default function FinanzasStatsPage() {
                       dataKey="ingresos"
                       stroke="#22c55e"
                       strokeWidth={2}
-                      name="Ingresos Hymperium (completados)"
+                      name="Ingresos Netos (completados)"
                       dot={{ fill: '#22c55e', r: 4 }}
                     />
                     <Line
@@ -531,8 +515,8 @@ export default function FinanzasStatsPage() {
             </div>
 
             <div className="bg-surface rounded-xl p-6 border border-border">
-              <h3 className="text-lg font-semibold mb-4">Desglose {chartSubtitle} (Bruto, Hymperium, Carlitos, Joaco, Pagos Devs) — solo completados</h3>
-              {stats.timeseriesIngresos.some((d) => d.bruto > 0 || d.hymperium > 0) ? (
+              <h3 className="text-lg font-semibold mb-4">Desglose {chartSubtitle} (Bruto, Neto, Coste Implementación) — solo completados</h3>
+              {stats.timeseriesIngresos.some((d) => d.bruto > 0 || d.neto > 0) ? (
                 <ResponsiveContainer width="100%" height={300}>
                   <BarChart data={stats.timeseriesIngresos}>
                     <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.3)" />
@@ -553,18 +537,11 @@ export default function FinanzasStatsPage() {
                     />
                     <Legend wrapperStyle={{ color: '#ffffff' }} />
                     <Bar dataKey="bruto" fill="#3b82f6" name="Ingresos Brutos" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="neto" fill="#22c55e" name="Ingresos Netos" radius={[4, 4, 0, 0]} />
                     <Bar
-                      dataKey="hymperium"
-                      fill="#22c55e"
-                      name="Ingresos Hymperium"
-                      radius={[4, 4, 0, 0]}
-                    />
-                    <Bar dataKey="carlitos" fill="#8b5cf6" name="Carlitos" radius={[4, 4, 0, 0]} />
-                    <Bar dataKey="joaco" fill="#ec4899" name="Joaco" radius={[4, 4, 0, 0]} />
-                    <Bar
-                      dataKey="pagos_devs"
+                      dataKey="coste_implementacion"
                       fill="#f59e0b"
-                      name="Pagos a Devs"
+                      name="Coste de Implementación"
                       radius={[4, 4, 0, 0]}
                     />
                   </BarChart>
@@ -663,7 +640,7 @@ export default function FinanzasStatsPage() {
                             </p>
                           </div>
                           <span className="text-green-600 font-medium ml-2">
-                            +{formatCurrency(ing.hymperium)}
+                            +{formatCurrency(ing.neto)}
                           </span>
                         </div>
                       ))}
@@ -803,7 +780,7 @@ export default function FinanzasStatsPage() {
                       </span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-muted">Ingresos Hymperium:</span>
+                      <span className="text-muted">Ingresos Netos:</span>
                       <span className="text-green-600 font-medium">
                         {formatCurrency(stats.comparativoTrimestral.trimestreActual.ingresos)}
                       </span>
@@ -845,7 +822,7 @@ export default function FinanzasStatsPage() {
                       </span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-muted">Ingresos Hymperium:</span>
+                      <span className="text-muted">Ingresos Netos:</span>
                       <span className="text-green-600 font-medium">
                         {formatCurrency(stats.comparativoTrimestral.trimestreAnterior.ingresos)}
                       </span>

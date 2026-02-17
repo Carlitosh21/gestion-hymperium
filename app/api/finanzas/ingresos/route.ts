@@ -30,9 +30,6 @@ export async function POST(request: Request) {
       proyecto_id,
       tipo_proyecto,
       pago_desarrollador,
-      porcentaje_carlitos,
-      porcentaje_joaco,
-      porcentaje_hymperium,
       fecha,
       estado,
     } = body
@@ -42,9 +39,9 @@ export async function POST(request: Request) {
     const result = await query(
       `INSERT INTO ingresos (
         monto, descripcion, proyecto_id, tipo_proyecto,
-        pago_desarrollador, porcentaje_carlitos, porcentaje_joaco, porcentaje_hymperium, fecha, estado
+        pago_desarrollador, fecha, estado
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+      VALUES ($1, $2, $3, $4, $5, $6, $7)
       RETURNING *`,
       [
         monto,
@@ -52,9 +49,6 @@ export async function POST(request: Request) {
         proyecto_id || null,
         tipo_proyecto || null,
         pago_desarrollador || 0,
-        porcentaje_carlitos || 0,
-        porcentaje_joaco || 0,
-        porcentaje_hymperium || 0,
         fecha || new Date().toISOString(),
         estadoVal,
       ]

@@ -17,9 +17,6 @@ export async function PATCH(
       proyecto_id,
       tipo_proyecto,
       pago_desarrollador,
-      porcentaje_carlitos,
-      porcentaje_joaco,
-      porcentaje_hymperium,
       fecha,
       estado,
     } = body
@@ -33,12 +30,9 @@ export async function PATCH(
         proyecto_id = $3,
         tipo_proyecto = $4,
         pago_desarrollador = $5,
-        porcentaje_carlitos = $6,
-        porcentaje_joaco = $7,
-        porcentaje_hymperium = $8,
-        fecha = $9,
-        estado = COALESCE($10, estado)
-      WHERE id = $11
+        fecha = $6,
+        estado = COALESCE($7, estado)
+      WHERE id = $8
       RETURNING *`,
       [
         monto,
@@ -46,9 +40,6 @@ export async function PATCH(
         proyecto_id || null,
         tipo_proyecto || null,
         pago_desarrollador ?? 0,
-        porcentaje_carlitos ?? 0,
-        porcentaje_joaco ?? 0,
-        porcentaje_hymperium ?? 0,
         fecha || new Date().toISOString(),
         estadoVal,
         params.id,
