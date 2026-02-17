@@ -190,7 +190,6 @@ CREATE INDEX IF NOT EXISTS idx_ideas_contenido_estado ON ideas_contenido(estado)
 CREATE INDEX IF NOT EXISTS idx_videos_plataforma ON videos(plataforma);
 CREATE INDEX IF NOT EXISTS idx_videos_tipo ON videos(tipo);
 CREATE INDEX IF NOT EXISTS idx_videos_idea ON videos(idea_contenido_id);
-CREATE INDEX IF NOT EXISTS idx_llamadas_lead ON llamadas(lead_id);
 CREATE INDEX IF NOT EXISTS idx_llamadas_cliente ON llamadas(cliente_id);
 CREATE INDEX IF NOT EXISTS idx_clientes_email ON clientes(email);
 CREATE INDEX IF NOT EXISTS idx_clientes_numero_id ON clientes(numero_identificacion);
