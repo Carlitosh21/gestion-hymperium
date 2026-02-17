@@ -1,7 +1,7 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { TrendingUp, Users, Phone, DollarSign, Video, BarChart3 } from 'lucide-react'
+import { Users, DollarSign } from 'lucide-react'
 import { RequirePermission } from '@/components/RequirePermission'
 
 export default function EstadisticasPage() {
@@ -9,22 +9,13 @@ export default function EstadisticasPage() {
 
   const modules = [
     {
-      id: 'ventas',
-      title: 'Ventas',
-      description: 'Prospección, Llamadas y Contenido',
-      icon: TrendingUp,
-      color: 'bg-blue-500',
-      href: '/estadisticas/ventas',
-      available: true,
-    },
-    {
       id: 'clientes',
       title: 'Clientes',
-      description: 'Onboarding y gestión',
+      description: 'Cantidad, pagos por cliente, tiempo de entrega',
       icon: Users,
       color: 'bg-green-500',
-      href: '#',
-      available: false,
+      href: '/estadisticas/clientes',
+      available: true,
     },
     {
       id: 'finanzas',
@@ -34,15 +25,6 @@ export default function EstadisticasPage() {
       color: 'bg-emerald-500',
       href: '/estadisticas/finanzas',
       available: true,
-    },
-    {
-      id: 'contenido',
-      title: 'Contenido',
-      description: 'Ideas y videos',
-      icon: Video,
-      color: 'bg-purple-500',
-      href: '#',
-      available: false,
     },
   ]
 

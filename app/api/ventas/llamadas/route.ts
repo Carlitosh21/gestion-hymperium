@@ -10,10 +10,8 @@ export async function GET() {
     const result = await query(`
       SELECT 
         l.*,
-        le.nombre as lead_nombre,
         c.nombre as cliente_nombre
       FROM llamadas l
-      LEFT JOIN leads le ON l.lead_id = le.id
       LEFT JOIN clientes c ON l.cliente_id = c.id
       ORDER BY l.fecha DESC
     `)
@@ -31,21 +29,26 @@ export async function POST(request: Request) {
   try {
     await requireInternalSession()
     const body = await request.json()
-    const { lead_id, cliente_id, fecha, link_grabacion, notas, resultado } = body
+    const { cliente_id, fecha, link_grabacion, notas } = body
+
+    if (!cliente_id) {
+      return NextResponse.json(
+        { error: 'Cliente es requerido' },
+        { status: 400 }
+      )
+    }
 
     const result = await query(
       `INSERT INTO llamadas (
-        lead_id, cliente_id, fecha, duracion, link_grabacion, notas, resultado
+        cliente_id, fecha, duracion, link_grabacion, notas, resultado
       )
-      VALUES ($1, $2, $3, NULL, $4, $5, $6)
+      VALUES ($1, $2, NULL, $3, $4, NULL)
       RETURNING *`,
       [
-        lead_id || null,
-        cliente_id || null,
+        cliente_id,
         fecha,
         link_grabacion || null,
         notas || null,
-        resultado || null,
       ]
     )
 

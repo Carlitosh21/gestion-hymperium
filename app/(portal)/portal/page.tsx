@@ -43,6 +43,10 @@ export default function PortalPage() {
   const [resultados, setResultados] = useState<Resultado[]>([])
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<'overview' | 'recursos' | 'tareas' | 'resultados'>('overview')
+  const [showRecursoForm, setShowRecursoForm] = useState(false)
+  const [showTareaForm, setShowTareaForm] = useState(false)
+  const [recursoForm, setRecursoForm] = useState({ titulo: '', tipo: 'link', url: '', descripcion: '' })
+  const [tareaForm, setTareaForm] = useState({ titulo: '', descripcion: '', fecha_limite: '' })
 
   useEffect(() => {
     fetchData()
@@ -71,6 +75,68 @@ export default function PortalPage() {
       router.push('/portal/login')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleAddRecurso = async (e: React.FormEvent) => {
+    e.preventDefault()
+    try {
+      const res = await fetch('/api/portal/me/recursos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(recursoForm),
+      })
+      if (res.ok) {
+        setRecursoForm({ titulo: '', tipo: 'link', url: '', descripcion: '' })
+        setShowRecursoForm(false)
+        fetchData()
+      } else {
+        const err = await res.json()
+        alert(err.error || 'Error al agregar recurso')
+      }
+    } catch {
+      alert('Error al agregar recurso')
+    }
+  }
+
+  const handleAddTarea = async (e: React.FormEvent) => {
+    e.preventDefault()
+    try {
+      const res = await fetch('/api/portal/me/tareas', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...tareaForm,
+          fecha_limite: tareaForm.fecha_limite || null,
+        }),
+      })
+      if (res.ok) {
+        setTareaForm({ titulo: '', descripcion: '', fecha_limite: '' })
+        setShowTareaForm(false)
+        fetchData()
+      } else {
+        const err = await res.json()
+        alert(err.error || 'Error al agregar tarea')
+      }
+    } catch {
+      alert('Error al agregar tarea')
+    }
+  }
+
+  const handleMarcarCompletada = async (tareaId: number) => {
+    try {
+      const res = await fetch(`/api/portal/me/tareas/${tareaId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ estado: 'completada' }),
+      })
+      if (res.ok) fetchData()
+      else {
+        const err = await res.json()
+        alert(err.error || 'No se pudo marcar como completada')
+      }
+    } catch {
+      alert('Error al actualizar tarea')
     }
   }
 
@@ -175,7 +241,56 @@ export default function PortalPage() {
 
           {activeTab === 'recursos' && (
             <div>
-              <h3 className="text-lg font-semibold mb-4">Recursos Relacionados</h3>
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-semibold">Recursos (Docs)</h3>
+                <button
+                  onClick={() => setShowRecursoForm(!showRecursoForm)}
+                  className="px-4 py-2 bg-accent text-white text-sm rounded-lg hover:bg-accent-hover transition-colors"
+                >
+                  {showRecursoForm ? 'Cancelar' : '+ Agregar Doc'}
+                </button>
+              </div>
+              {showRecursoForm && (
+                <form onSubmit={handleAddRecurso} className="mb-6 p-4 bg-surface-elevated rounded-lg space-y-3">
+                  <input
+                    type="text"
+                    required
+                    placeholder="Título"
+                    value={recursoForm.titulo}
+                    onChange={(e) => setRecursoForm({ ...recursoForm, titulo: e.target.value })}
+                    className="w-full px-4 py-2 border border-border rounded-lg bg-background"
+                  />
+                  <select
+                    value={recursoForm.tipo}
+                    onChange={(e) => setRecursoForm({ ...recursoForm, tipo: e.target.value })}
+                    className="w-full px-4 py-2 border border-border rounded-lg bg-background"
+                  >
+                    <option value="link">Link</option>
+                    <option value="archivo">Archivo</option>
+                    <option value="nota">Nota</option>
+                  </select>
+                  <input
+                    type="url"
+                    placeholder="URL"
+                    value={recursoForm.url}
+                    onChange={(e) => setRecursoForm({ ...recursoForm, url: e.target.value })}
+                    className="w-full px-4 py-2 border border-border rounded-lg bg-background"
+                  />
+                  <textarea
+                    placeholder="Descripción"
+                    value={recursoForm.descripcion}
+                    onChange={(e) => setRecursoForm({ ...recursoForm, descripcion: e.target.value })}
+                    rows={2}
+                    className="w-full px-4 py-2 border border-border rounded-lg bg-background"
+                  />
+                  <button
+                    type="submit"
+                    className="px-4 py-2 bg-accent text-white rounded-lg text-sm hover:bg-accent-hover transition-colors"
+                  >
+                    Agregar
+                  </button>
+                </form>
+              )}
               {recursos.length === 0 ? (
                 <p className="text-muted text-sm">No hay recursos agregados</p>
               ) : (
@@ -203,7 +318,46 @@ export default function PortalPage() {
 
           {activeTab === 'tareas' && (
             <div>
-              <h3 className="text-lg font-semibold mb-4">Tareas</h3>
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-semibold">Tareas</h3>
+                <button
+                  onClick={() => setShowTareaForm(!showTareaForm)}
+                  className="px-4 py-2 bg-accent text-white text-sm rounded-lg hover:bg-accent-hover transition-colors"
+                >
+                  {showTareaForm ? 'Cancelar' : '+ Agregar tarea (Ellos)'}
+                </button>
+              </div>
+              {showTareaForm && (
+                <form onSubmit={handleAddTarea} className="mb-6 p-4 bg-surface-elevated rounded-lg space-y-3">
+                  <input
+                    type="text"
+                    required
+                    placeholder="Título"
+                    value={tareaForm.titulo}
+                    onChange={(e) => setTareaForm({ ...tareaForm, titulo: e.target.value })}
+                    className="w-full px-4 py-2 border border-border rounded-lg bg-background"
+                  />
+                  <textarea
+                    placeholder="Descripción"
+                    value={tareaForm.descripcion}
+                    onChange={(e) => setTareaForm({ ...tareaForm, descripcion: e.target.value })}
+                    rows={2}
+                    className="w-full px-4 py-2 border border-border rounded-lg bg-background"
+                  />
+                  <input
+                    type="datetime-local"
+                    value={tareaForm.fecha_limite}
+                    onChange={(e) => setTareaForm({ ...tareaForm, fecha_limite: e.target.value })}
+                    className="w-full px-4 py-2 border border-border rounded-lg bg-background"
+                  />
+                  <button
+                    type="submit"
+                    className="px-4 py-2 bg-accent text-white rounded-lg text-sm hover:bg-accent-hover transition-colors"
+                  >
+                    Agregar
+                  </button>
+                </form>
+              )}
               {tareas.length === 0 ? (
                 <p className="text-muted text-sm">No hay tareas</p>
               ) : (
@@ -223,15 +377,25 @@ export default function PortalPage() {
                             )}
                           </div>
                         </div>
-                        <span className={`px-3 py-1 text-xs rounded-lg ${
-                          tarea.estado === 'completada' ? 'bg-green-600 text-white' :
-                          tarea.estado === 'en_progreso' ? 'bg-blue-600 text-white' :
-                          'bg-gray-300 text-gray-700'
-                        }`}>
-                          {tarea.estado === 'completada' ? 'Completada' :
-                           tarea.estado === 'en_progreso' ? 'En Progreso' :
-                           'Pendiente'}
-                        </span>
+                        <div className="flex items-center gap-2">
+                          {tarea.responsable === 'ellos' && tarea.estado !== 'completada' && (
+                            <button
+                              onClick={() => handleMarcarCompletada(tarea.id)}
+                              className="px-3 py-1 text-xs bg-green-600 text-white rounded-lg hover:bg-green-700"
+                            >
+                              Marcar completada
+                            </button>
+                          )}
+                          <span className={`px-3 py-1 text-xs rounded-lg ${
+                            tarea.estado === 'completada' ? 'bg-green-600 text-white' :
+                            tarea.estado === 'en_progreso' ? 'bg-blue-600 text-white' :
+                            'bg-gray-300 text-gray-700'
+                          }`}>
+                            {tarea.estado === 'completada' ? 'Completada' :
+                             tarea.estado === 'en_progreso' ? 'En Progreso' :
+                             'Pendiente'}
+                          </span>
+                        </div>
                       </div>
                     </div>
                   ))}

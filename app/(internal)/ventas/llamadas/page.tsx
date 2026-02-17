@@ -7,20 +7,13 @@ const RESULTADO_OPTIONS = ['No-Show', 'Canceló', 'Reagendó', 'Show-up', 'Otro'
 
 interface Llamada {
   id: number
-  lead_id: number | null
   cliente_id: number | null
   fecha: string
   duracion: number | null
   link_grabacion: string | null
   notas: string | null
   resultado: string | null
-  lead_nombre?: string
   cliente_nombre?: string
-}
-
-interface Lead {
-  id: number
-  nombre: string
 }
 
 interface Cliente {
@@ -177,10 +170,10 @@ function CalendarView({ llamadas, viewMode, onEditLlamada }: CalendarViewProps) 
                             key={ll.id}
                             onClick={() => onEditLlamada(ll)}
                             className="text-xs bg-accent/20 hover:bg-accent/30 rounded p-1 cursor-pointer truncate"
-                            title={`${formatTime(ll.fecha)} - ${ll.lead_nombre || ll.cliente_nombre || 'Sin nombre'}`}
+                            title={`${formatTime(ll.fecha)} - ${ll.cliente_nombre || 'Sin nombre'}`}
                           >
                             <div className="font-medium">{formatTime(ll.fecha)}</div>
-                            <div className="truncate">{ll.lead_nombre || ll.cliente_nombre || 'Sin nombre'}</div>
+                            <div className="truncate">{ll.cliente_nombre || 'Sin nombre'}</div>
                           </div>
                         ))}
                       </div>
@@ -217,7 +210,7 @@ function CalendarView({ llamadas, viewMode, onEditLlamada }: CalendarViewProps) 
                             {formatTime(ll.fecha)}
                           </div>
                           <div className="font-medium text-sm mb-1">
-                            {ll.lead_nombre || ll.cliente_nombre || 'Sin nombre'}
+                            {ll.cliente_nombre || 'Sin nombre'}
                           </div>
                           {ll.resultado && (
                             <div className="text-xs text-muted truncate">{ll.resultado}</div>
@@ -237,25 +230,20 @@ function CalendarView({ llamadas, viewMode, onEditLlamada }: CalendarViewProps) 
 
 export default function LlamadasPage() {
   const [llamadas, setLlamadas] = useState<Llamada[]>([])
-  const [leads, setLeads] = useState<Lead[]>([])
   const [clientes, setClientes] = useState<Cliente[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [formData, setFormData] = useState({
-    lead_id: '',
     cliente_id: '',
     fecha: new Date().toISOString().slice(0, 16),
     link_grabacion: '',
     notas: '',
-    resultado: '',
-    origen: 'prospeccion', // 'prospeccion' o 'contenido'
   })
   const [editingLlamada, setEditingLlamada] = useState<Llamada | null>(null)
   const [viewMode, setViewMode] = useState<'lista' | 'mes' | 'semana'>('lista')
 
   useEffect(() => {
     fetchLlamadas()
-    fetchLeads()
     fetchClientes()
   }, [])
 
@@ -268,16 +256,6 @@ export default function LlamadasPage() {
       console.error('Error al cargar llamadas:', error)
     } finally {
       setLoading(false)
-    }
-  }
-
-  const fetchLeads = async () => {
-    try {
-      const response = await fetch('/api/ventas/leads')
-      const data = await response.json()
-      setLeads(data)
-    } catch (error) {
-      console.error('Error al cargar leads:', error)
     }
   }
 
@@ -298,25 +276,20 @@ export default function LlamadasPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        lead_id: formData.lead_id ? parseInt(formData.lead_id) : null,
         cliente_id: formData.cliente_id ? parseInt(formData.cliente_id) : null,
         fecha: formData.fecha,
         link_grabacion: formData.link_grabacion || null,
         notas: formData.notas || null,
-        resultado: formData.resultado || null,
       }),
       })
 
       if (response.ok) {
         setShowForm(false)
         setFormData({
-          lead_id: '',
           cliente_id: '',
           fecha: new Date().toISOString().slice(0, 16),
           link_grabacion: '',
           notas: '',
-          resultado: '',
-          origen: 'prospeccion',
         })
         fetchLlamadas()
       }
@@ -425,45 +398,19 @@ export default function LlamadasPage() {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium mb-2">Origen</label>
+                <label className="block text-sm font-medium mb-2">Cliente *</label>
                 <select
-                  value={formData.origen}
-                  onChange={(e) => {
-                    setFormData({ ...formData, origen: e.target.value, lead_id: '', cliente_id: '' })
-                  }}
+                  required
+                  value={formData.cliente_id}
+                  onChange={(e) => setFormData({ ...formData, cliente_id: e.target.value })}
                   className="w-full px-4 py-2 border border-border rounded-lg bg-background"
                 >
-                  <option value="prospeccion">Prospección Fría</option>
-                  <option value="contenido">Contenido</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-2">
-                  {formData.origen === 'prospeccion' ? 'Lead' : 'Cliente'}
-                </label>
-                <select
-                  value={formData.origen === 'prospeccion' ? formData.lead_id : formData.cliente_id}
-                  onChange={(e) => {
-                    if (formData.origen === 'prospeccion') {
-                      setFormData({ ...formData, lead_id: e.target.value })
-                    } else {
-                      setFormData({ ...formData, cliente_id: e.target.value })
-                    }
-                  }}
-                  className="w-full px-4 py-2 border border-border rounded-lg bg-background"
-                >
-                  <option value="">Seleccionar...</option>
-                  {formData.origen === 'prospeccion'
-                    ? leads.map((lead) => (
-                        <option key={lead.id} value={lead.id.toString()}>
-                          {lead.nombre}
-                        </option>
-                      ))
-                    : clientes.map((cliente) => (
-                        <option key={cliente.id} value={cliente.id.toString()}>
-                          {cliente.nombre}
-                        </option>
-                      ))}
+                  <option value="">Seleccionar cliente...</option>
+                  {clientes.map((cliente) => (
+                    <option key={cliente.id} value={cliente.id.toString()}>
+                      {cliente.nombre}
+                    </option>
+                  ))}
                 </select>
               </div>
               <div>
@@ -484,16 +431,6 @@ export default function LlamadasPage() {
                   onChange={(e) => setFormData({ ...formData, link_grabacion: e.target.value })}
                   className="w-full px-4 py-2 border border-border rounded-lg bg-background"
                   placeholder="https://..."
-                />
-              </div>
-              <div className="md:col-span-2">
-                <label className="block text-sm font-medium mb-2">Resultado</label>
-                <input
-                  type="text"
-                  value={formData.resultado}
-                  onChange={(e) => setFormData({ ...formData, resultado: e.target.value })}
-                  className="w-full px-4 py-2 border border-border rounded-lg bg-background"
-                  placeholder="Ej: Cliente interesado, necesita más info, etc."
                 />
               </div>
               <div className="md:col-span-2">
@@ -532,7 +469,7 @@ export default function LlamadasPage() {
               <div className="flex justify-between items-start mb-4">
                 <div>
                   <h3 className="text-lg font-semibold mb-2">
-                    {llamada.lead_nombre || llamada.cliente_nombre || 'Sin nombre'}
+                    {llamada.cliente_nombre || 'Sin nombre'}
                   </h3>
                   <p className="text-sm text-muted">
                     {new Date(llamada.fecha).toLocaleString('es-ES')}

@@ -2,8 +2,8 @@ import type { Metadata } from 'next'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'Gestión Hymperium',
-  description: 'Sistema de gestión para Hymperium',
+  title: 'Sociedad AI Setter',
+  description: 'Sistema de gestión Sociedad AI Setter',
 }
 
 export default function RootLayout({
