@@ -18,9 +18,10 @@ export async function PATCH(
     if (titulo !== undefined) {
       updates.push(`titulo = $${paramIndex++}`)
       values.push(titulo)
-      // Si se actualiza titulo y no viene pregunta, actualizar pregunta también para compatibilidad
+      // Si se actualiza titulo y no viene pregunta, actualizar pregunta también para compatibilidad (param separado evita "inconsistent types")
       if (pregunta === undefined) {
-        updates.push(`pregunta = $${paramIndex - 1}`)
+        updates.push(`pregunta = $${paramIndex++}`)
+        values.push(titulo)
       }
     }
 
@@ -32,9 +33,10 @@ export async function PATCH(
     if (pregunta !== undefined) {
       updates.push(`pregunta = $${paramIndex++}`)
       values.push(pregunta)
-      // Si se actualiza pregunta y no viene titulo, actualizar titulo también
+      // Si se actualiza pregunta y no viene titulo, actualizar titulo también (param separado evita "inconsistent types")
       if (titulo === undefined) {
-        updates.push(`titulo = $${paramIndex - 1}`)
+        updates.push(`titulo = $${paramIndex++}`)
+        values.push(pregunta)
       }
     }
 
