@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import {
   DndContext,
   DragOverlay,
-  closestCorners,
+  pointerWithin,
   KeyboardSensor,
   PointerSensor,
   useSensor,
@@ -769,18 +769,28 @@ export default function ProspeccionPage() {
     if (!over) return
 
     const leadId = active.id as string
-    // Si se suelta sobre otra tarjeta, over.id es el lead; usar containerId de la columna.
-    // Si se suelta en espacio vacío, over es el droppable y over.id es el estado.
-    const overContainerId = over.data.current?.sortable?.containerId ?? over.id
-    const newEstado = String(overContainerId)
+    // Resolución robusta del estado destino (Plan B):
+    // 1) over.id es estado válido (soltar en columna vacía)
+    // 2) containerId es estado válido (soltar sobre tarjeta en otra columna)
+    // 3) over.id es lead → usar estado de ese lead (columna donde está)
+    let newEstado: string | null = null
+    const overIdStr = String(over.id)
+    if (ESTADOS_PIPELINE.some(e => e.id === overIdStr)) {
+      newEstado = overIdStr
+    }
+    if (!newEstado && over.data.current?.sortable?.containerId) {
+      const cid = String(over.data.current.sortable.containerId)
+      if (ESTADOS_PIPELINE.some(e => e.id === cid)) newEstado = cid
+    }
+    if (!newEstado) {
+      const overLead = leads.find(l => l.id.toString() === overIdStr)
+      if (overLead) newEstado = overLead.estado
+    }
+    if (!newEstado) return
 
     // Encontrar el lead actual
     const lead = leads.find(l => l.id.toString() === leadId)
     if (!lead || lead.estado === newEstado) return
-
-    // Validar que el destino sea un estado válido del pipeline
-    const estadoValido = ESTADOS_PIPELINE.some(e => e.id === newEstado)
-    if (!estadoValido) return
 
     const prevEstado = lead.estado
 
@@ -1173,7 +1183,7 @@ export default function ProspeccionPage() {
       ) : (
         <DndContext
           sensors={sensors}
-          collisionDetection={closestCorners}
+          collisionDetection={pointerWithin}
           onDragStart={handleDragStart}
           onDragEnd={handleDragEnd}
         >
