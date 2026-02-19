@@ -108,9 +108,21 @@ export async function POST(request: Request) {
           }
         }
 
-        // Mapear campos: n8n usa titulo_propuesto o idea_titulo y descripcion_detallada
-        const titulo = ideaParsed.titulo_propuesto || ideaParsed.idea_titulo || ideaParsed.titulo_video || item.titulo_video || item.idea_titulo || item.titulo_propuesto || 'Sin título'
-        const descripcionEstrategica = ideaParsed.descripcion_detallada || ideaParsed.descripcion_estrategica || item.descripcion_estrategica || item.descripcion_detallada || null
+        // Mapear título: priorizar ideaParsed.titulo (formato actual de n8n)
+        const titulo = ideaParsed.titulo || ideaParsed.titulo_propuesto || ideaParsed.idea_titulo || ideaParsed.titulo_video || item.titulo_video || item.idea_titulo || item.titulo_propuesto || 'Sin título'
+        // Descripción: si no viene, construir desde el resto del JSON
+        let descripcionEstrategica = ideaParsed.descripcion_detallada || ideaParsed.descripcion_estrategica || item.descripcion_estrategica || item.descripcion_detallada || null
+        if (!descripcionEstrategica && Object.keys(ideaParsed).length > 0) {
+          const partes: string[] = []
+          if (ideaParsed.pilar) partes.push(`Pilar: ${ideaParsed.pilar}`)
+          if (ideaParsed.objetivo) partes.push(`Objetivo: ${ideaParsed.objetivo}`)
+          if (ideaParsed.curiosity_gap) partes.push(`Curiosity Gap: ${ideaParsed.curiosity_gap}`)
+          if (ideaParsed.que_valor_aporta) partes.push(`Valor que aporta: ${ideaParsed.que_valor_aporta}`)
+          if (ideaParsed.parte_solucion_que_toca) partes.push(`Parte de solución: ${ideaParsed.parte_solucion_que_toca}`)
+          if (ideaParsed.formato_recomendado) partes.push(`Formato recomendado: ${ideaParsed.formato_recomendado}`)
+          if (ideaParsed.notas_extra) partes.push(`Notas extra: ${ideaParsed.notas_extra}`)
+          descripcionEstrategica = partes.length > 0 ? partes.join('\n\n') : null
+        }
         
         // Construir URLs de Google Docs
         const guionLongformUrl = `https://docs.google.com/document/d/${longDocId}/edit`
