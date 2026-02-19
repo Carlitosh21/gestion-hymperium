@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -67,7 +68,7 @@ export default function LoginPage() {
   return (
     <div className="w-full max-w-md">
       <div className="bg-surface rounded-xl p-8 border border-border">
-        <h1 className="text-3xl font-semibold mb-2">Iniciar Sesión</h1>
+        <h1 className="text-3xl font-semibold mb-2">Inicio de sesión</h1>
         <p className="text-muted mb-6">
           Accede al panel de gestión de Hymperium
         </p>
@@ -109,6 +110,13 @@ export default function LoginPage() {
           >
             {submitting ? 'Iniciando sesión...' : 'Iniciar Sesión'}
           </button>
+
+          <p className="text-center text-sm text-muted mt-4">
+            No sos Admin?{' '}
+            <Link href="/portal/login" className="text-accent hover:underline">
+              Ingresar como cliente
+            </Link>
+          </p>
         </form>
       </div>
     </div>

@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 
 export default function PortalLoginPage() {
   const router = useRouter()
@@ -85,6 +86,13 @@ export default function PortalLoginPage() {
             >
               {submitting ? 'Iniciando sesión...' : 'Iniciar Sesión'}
             </button>
+
+            <p className="text-center text-sm text-muted mt-4">
+              No sos Cliente?{' '}
+              <Link href="/login" className="text-accent hover:underline">
+                Ingresar como Admin
+              </Link>
+            </p>
           </form>
         </div>
       </div>
