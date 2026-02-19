@@ -8,6 +8,7 @@ export async function middleware(request: NextRequest) {
   const publicRoutes = [
     '/login',
     '/setup',
+    '/onboarding',
     '/portal/login',
     '/estadisticas/onboarding',
   ]
@@ -16,6 +17,9 @@ export async function middleware(request: NextRequest) {
     '/api/auth/setup',
     '/api/auth/login',
     '/api/auth/me',
+    '/api/onboarding/validate-id',
+    '/api/onboarding/preguntas',
+    '/api/onboarding/submit',
     '/api/portal/login',
     '/api/estadisticas/onboarding/preguntas',
     '/api/estadisticas/onboarding/submit',
