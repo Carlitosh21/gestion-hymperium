@@ -666,7 +666,7 @@ function Column({ estado, leads, onEditLead, onDeleteLead, onOpenInstagram }: { 
             {leads.length}
           </span>
         </div>
-        <SortableContext items={leads.map(l => l.id.toString())} strategy={verticalListSortingStrategy}>
+        <SortableContext id={estado.id} items={leads.map(l => l.id.toString())} strategy={verticalListSortingStrategy}>
           <div className="space-y-2 flex-1 overflow-y-auto min-h-[200px]">
             {leads.length === 0 ? (
               <p className="text-sm text-muted text-center py-4">Sin leads</p>
@@ -769,11 +769,18 @@ export default function ProspeccionPage() {
     if (!over) return
 
     const leadId = active.id as string
-    const newEstado = over.id as string
+    // Si se suelta sobre otra tarjeta, over.id es el lead; usar containerId de la columna.
+    // Si se suelta en espacio vacío, over es el droppable y over.id es el estado.
+    const overContainerId = over.data.current?.sortable?.containerId ?? over.id
+    const newEstado = String(overContainerId)
 
     // Encontrar el lead actual
     const lead = leads.find(l => l.id.toString() === leadId)
     if (!lead || lead.estado === newEstado) return
+
+    // Validar que el destino sea un estado válido del pipeline
+    const estadoValido = ESTADOS_PIPELINE.some(e => e.id === newEstado)
+    if (!estadoValido) return
 
     const prevEstado = lead.estado
 
@@ -809,12 +816,16 @@ export default function ProspeccionPage() {
           fetchLeads()
         }
       } else {
-        // Revertir en caso de error
+        // Revertir en caso de error y mostrar feedback
+        const errorMsg = result?.error || `Error ${response.status} al actualizar el lead`
+        console.error('Error al actualizar lead:', errorMsg)
+        alert(errorMsg)
         fetchLeads()
       }
     } catch (error) {
+      const msg = error instanceof Error ? error.message : 'Error al actualizar lead'
       console.error('Error al actualizar lead:', error)
-      // Revertir en caso de error
+      alert(msg)
       fetchLeads()
     }
   }
